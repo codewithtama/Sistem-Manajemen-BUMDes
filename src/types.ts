@@ -72,4 +72,5 @@ export interface BUMDesConfig {
   initialCapitalDate: string;
   initialCapitalAmount: number;
   customInterestRate: number; // Default interest rate for simulations
+  finePercentagePerDay: number; // Late payment fine: % of outstanding principal per day overdue
 }

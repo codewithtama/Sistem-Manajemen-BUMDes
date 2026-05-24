@@ -9,6 +9,7 @@ export const initialBUMDesConfig: BUMDesConfig = {
   initialCapitalDate: "2026-01-02",
   initialCapitalAmount: 150000000, // Rp 150.000.000,- penyertaan modal desa awal
   customInterestRate: 1, // 1% jasa administratif per bulan sesuai mufakat
+  finePercentagePerDay: 0.1, // 0.1% dari sisa pokok per hari keterlambatan
 };
 
 export const initialCitizens: Citizen[] = [
@@ -166,28 +167,28 @@ export const initialLoans: Loan[] = [
     citizenId: "cit-1",
     citizenName: "Ahmad Subarjo",
     amount: 10000000,
-    interestPercentage: 1.0, // 1% per bulan
+    interestPercentage: 1.0,
     tenorMonths: 10,
     repaymentPeriod: "Bulanan",
     dateDisbursed: "2026-01-15",
     dueDate: "2026-11-15",
     status: "Lancar",
-    amountPaidPrincipal: 4000000, // Lah membayar 4 bulan angsuran pokok
-    amountPaidInterest: 400000, // 4 x Rp 100.000 bunga
+    amountPaidPrincipal: 4000000,
+    amountPaidInterest: 400000,
   },
   {
     id: "loan-2",
     citizenId: "cit-3",
     citizenName: "Joko Widodo Susilo",
     amount: 15000000,
-    interestPercentage: 1.2, // 1.2% per bulan
+    interestPercentage: 1.2,
     tenorMonths: 12,
     repaymentPeriod: "Bulanan",
     dateDisbursed: "2026-01-20",
     dueDate: "2027-01-20",
     status: "Lancar",
-    amountPaidPrincipal: 5000000, // Lah membayar 4 bulan angsuran pokok
-    amountPaidInterest: 720000,  // 4 x Rp 180.000 bunga
+    amountPaidPrincipal: 5000000,
+    amountPaidInterest: 720000,
   },
   {
     id: "loan-3",
@@ -199,8 +200,8 @@ export const initialLoans: Loan[] = [
     repaymentPeriod: "Bulanan",
     dateDisbursed: "2026-02-10",
     dueDate: "2026-08-10",
-    status: "Macet", // Menunggak sudah lebih dari 3 bulan (NPL)
-    amountPaidPrincipal: 833333, // baru bayar 1 bulan
+    status: "Macet",
+    amountPaidPrincipal: 833333,
     amountPaidInterest: 50000,
   }
 ];
@@ -375,7 +376,7 @@ export const initialCashTransactions: CashTransaction[] = [
     date: "2026-02-15",
     type: "masuk",
     category: "Repayment Pinjaman",
-    amount: 1100000, // Pokok + bunga
+    amount: 1100000,
     description: "Setoran Angsuran 1 Pinjaman - Ahmad Subarjo",
     referenceId: "lr-1",
   },
@@ -384,7 +385,7 @@ export const initialCashTransactions: CashTransaction[] = [
     date: "2026-02-20",
     type: "masuk",
     category: "Repayment Pinjaman",
-    amount: 1430000, // Pokok + bunga
+    amount: 1430000,
     description: "Setoran Angsuran 1 Pinjaman - Joko Widodo Susilo",
     referenceId: "lr-5",
   },
@@ -519,4 +520,73 @@ export const formatRupiah = (amount: number): string => {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
   }).format(amount);
+};
+
+// CSV Export Utility
+export const exportToCSV = (filename: string, headers: string[], rows: (string | number)[][]) => {
+  const csvContent = [
+    headers.join(","),
+    ...rows.map(row =>
+      row.map(val => {
+        const strVal = String(val === null || val === undefined ? "" : val).replace(/"/g, '""');
+        return strVal.includes(",") || strVal.includes("\n") || strVal.includes('"')
+          ? `"${strVal}"`
+          : strVal;
+      }).join(",")
+    )
+  ].join("\n");
+
+  const blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `${filename}.csv`);
+  link.style.visibility = "hidden";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+/**
+ * Computes loan collectability status automatically based on due date.
+ * Follows Bank Indonesia / OJK NPL classification:
+ * - Lancar       : not yet overdue or < 30 days overdue
+ * - Kurang Lancar: 31–90 days overdue
+ * - Diragukan    : 91–180 days overdue
+ * - Macet        : > 180 days overdue (or fully paid → stays Lancar)
+ */
+export const computeLoanStatus = (
+  dueDate: string,
+  amountPaidPrincipal: number,
+  totalPrincipal: number
+): "Lancar" | "Kurang Lancar" | "Diragukan" | "Macet" => {
+  if (amountPaidPrincipal >= totalPrincipal) return "Lancar";
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(dueDate);
+  due.setHours(0, 0, 0, 0);
+
+  const diffMs = today.getTime() - due.getTime();
+  const daysOverdue = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (daysOverdue <= 30) return "Lancar";
+  if (daysOverdue <= 90) return "Kurang Lancar";
+  if (daysOverdue <= 180) return "Diragukan";
+  return "Macet";
+};
+
+// Backup: export all app data as a downloadable JSON file
+export const exportToJSON = (data: object, filename: string) => {
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: "application/json;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `${filename}.json`);
+  link.style.visibility = "hidden";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 };
