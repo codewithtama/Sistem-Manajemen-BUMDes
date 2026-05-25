@@ -248,7 +248,7 @@ export default function App() {
 
       {/* Toast Notification overlay */}
       {state.toast.visible && (
-        <div className="fixed top-4 right-4 z-50 pointer-events-auto animate-scale-up">
+        <div className="fixed top-4 right-4 z-50 pointer-events-auto animate-toast-in">
           <div className={`
             flex items-center gap-3 px-4.5 py-3 rounded-2xl border shadow-xl backdrop-blur-md max-w-sm
             ${state.toast.type === "success" ? "bg-emerald-600/95 text-white border-emerald-700/50" : ""}

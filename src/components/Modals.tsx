@@ -23,7 +23,7 @@ function ModalWrapper({ onClose, children }: { onClose: () => void; children: Re
       className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="animate-scale-up">{children}</div>
+      <div className="animate-modal-in">{children}</div>
     </div>
   );
 }
@@ -612,7 +612,7 @@ export default function Modals({
       {/* 11. Kuitansi Struk Termal */}
       {showReceiptModal && lastCompletedTx && (
         <ModalWrapper onClose={() => setShowReceiptModal(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xs overflow-hidden p-6 animate-scale-up font-mono text-xs text-slate-800 relative print:p-2 print:border-none print:shadow-none">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xs overflow-hidden p-6 font-mono text-xs text-slate-800 relative print:p-2 print:border-none print:shadow-none">
             
             {/* Thermal Print Header */}
             <div className="text-center border-b border-dashed border-slate-300 pb-4">

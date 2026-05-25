@@ -259,10 +259,16 @@ export default function DashboardOverview({
         {metrics.map(m => {
           const Icon = m.icon;
           const isOpen = activeTooltip === m.id;
+          const hoverCls = 
+            m.id === "kas" ? "hover:-translate-y-1 hover:shadow-lg hover:shadow-emerald-500/8 hover:border-emerald-300" :
+            m.id === "tabungan" ? "hover:-translate-y-1 hover:shadow-lg hover:shadow-blue-500/8 hover:border-blue-300" :
+            m.id === "piutang" ? "hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-500/8 hover:border-indigo-300" :
+            m.id === "npl" ? "hover:-translate-y-1 hover:shadow-lg hover:shadow-rose-500/8 hover:border-rose-300" :
+            "hover:-translate-y-1 hover:shadow-lg hover:shadow-teal-500/8 hover:border-teal-300";
           return (
             <div
               key={m.id}
-              className="relative bg-white rounded-2xl border border-slate-200 p-5 overflow-hidden hover:shadow-md hover:border-slate-300 transition-all duration-200"
+              className={`relative bg-white rounded-2xl border border-slate-200 p-5 overflow-hidden transition-all duration-300 ${hoverCls}`}
             >
               {/* Tooltip overlay */}
               {isOpen && (
@@ -382,6 +388,7 @@ export default function DashboardOverview({
                 strokeLinejoin="round"
                 filter="url(#glow-in)"
                 points={monthlyStats.map((st, idx) => `${50 + idx * 100},${170 - (maxVal > 0 ? (st.masuk / maxVal) * 130 : 0)}`).join(" ")}
+                className="animate-draw-line"
               />
               <polyline
                 fill="none"
@@ -391,6 +398,7 @@ export default function DashboardOverview({
                 strokeLinejoin="round"
                 filter="url(#glow-out)"
                 points={monthlyStats.map((st, idx) => `${50 + idx * 100},${170 - (maxVal > 0 ? (st.keluar / maxVal) * 130 : 0)}`).join(" ")}
+                className="animate-draw-line"
               />
 
               {monthlyStats.map((st, idx) => {
@@ -457,22 +465,30 @@ export default function DashboardOverview({
                       
                       {u.pamsimas > 0 && (
                         <circle cx="50" cy="50" r="40" fill="transparent" stroke="#10b981" strokeWidth="10"
-                          strokeDasharray={pamsStroke} strokeDashoffset={pamsOff} className="transition-all duration-300 hover:stroke-[12px] cursor-pointer" />
+                          strokeDasharray={pamsStroke} strokeDashoffset={pamsOff}
+                          style={{ "--dash-offset": `${pamsOff}px` } as React.CSSProperties}
+                          className="animate-draw-circle transition-all duration-300 hover:stroke-[12px] cursor-pointer" />
                       )}
                       
                       {u.tokoDesa > 0 && (
                         <circle cx="50" cy="50" r="40" fill="transparent" stroke="#6366f1" strokeWidth="10"
-                          strokeDasharray={tokoStroke} strokeDashoffset={tokoOff} className="transition-all duration-300 hover:stroke-[12px] cursor-pointer" />
+                          strokeDasharray={tokoStroke} strokeDashoffset={tokoOff}
+                          style={{ "--dash-offset": `${tokoOff}px` } as React.CSSProperties}
+                          className="animate-draw-circle transition-all duration-300 hover:stroke-[12px] cursor-pointer" />
                       )}
                       
                       {u.alatTani > 0 && (
                         <circle cx="50" cy="50" r="40" fill="transparent" stroke="#f59e0b" strokeWidth="10"
-                          strokeDasharray={taniStroke} strokeDashoffset={taniOff} className="transition-all duration-300 hover:stroke-[12px] cursor-pointer" />
+                          strokeDasharray={taniStroke} strokeDashoffset={taniOff}
+                          style={{ "--dash-offset": `${taniOff}px` } as React.CSSProperties}
+                          className="animate-draw-circle transition-all duration-300 hover:stroke-[12px] cursor-pointer" />
                       )}
                       
                       {u.sampah > 0 && (
                         <circle cx="50" cy="50" r="40" fill="transparent" stroke="#f43f5e" strokeWidth="10"
-                          strokeDasharray={sampStroke} strokeDashoffset={sampOff} className="transition-all duration-300 hover:stroke-[12px] cursor-pointer" />
+                          strokeDasharray={sampStroke} strokeDashoffset={sampOff}
+                          style={{ "--dash-offset": `${sampOff}px` } as React.CSSProperties}
+                          className="animate-draw-circle transition-all duration-300 hover:stroke-[12px] cursor-pointer" />
                       )}
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
@@ -537,8 +553,8 @@ export default function DashboardOverview({
                 return (
                   <div key={i} className="flex-1 flex flex-col items-center h-full justify-end group">
                     <div className="w-full flex justify-center items-end gap-1 h-full">
-                      <div className="w-4 md:w-6 bg-emerald-500 hover:bg-emerald-600 rounded-t transition-all duration-500" style={{ height: `${pM}%` }} />
-                      <div className="w-4 md:w-6 bg-rose-400 hover:bg-rose-500 rounded-t transition-all duration-500" style={{ height: `${pK}%` }} />
+                      <div className="w-4 md:w-6 bg-emerald-500 hover:bg-emerald-600 rounded-t transition-all duration-500 animate-grow-bar" style={{ height: `${pM}%` }} />
+                      <div className="w-4 md:w-6 bg-rose-400 hover:bg-rose-500 rounded-t transition-all duration-500 animate-grow-bar" style={{ height: `${pK}%` }} />
                     </div>
                     <span className="text-[10px] font-medium text-slate-400 mt-2">{st.name}</span>
                   </div>
