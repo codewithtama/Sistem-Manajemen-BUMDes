@@ -166,6 +166,18 @@ export default function PinjamanView({
               {filtered.map(ln => {
                 const outstanding = Math.max(0, ln.amount - ln.amountPaidPrincipal);
                 const pct = ln.amount > 0 ? Math.min(100, (ln.amountPaidPrincipal / ln.amount) * 100) : 0;
+                
+                // Dynamic days overdue
+                let daysOverdue = 0;
+                if (outstanding > 0) {
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const due = new Date(ln.dueDate);
+                  due.setHours(0, 0, 0, 0);
+                  const diffMs = today.getTime() - due.getTime();
+                  daysOverdue = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+                }
+
                 return (
                   <tr key={ln.id} className="hover:bg-slate-50/50 transition">
                     <td className="px-6 py-4">
@@ -186,9 +198,25 @@ export default function PinjamanView({
                       {outstanding > 0 ? formatRupiah(outstanding) : <span className="text-emerald-600 font-semibold text-xs">Lunas</span>}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${statusCfg[ln.status]?.cls}`}>
-                        {statusCfg[ln.status]?.label}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className={`inline-flex items-center w-fit px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${statusCfg[ln.status]?.cls}`} title={
+                          ln.status === "Lancar" ? "Pembayaran tepat waktu / keterlambatan ≤ 30 hari" :
+                          ln.status === "Kurang Lancar" ? "Keterlambatan 31 - 90 hari" :
+                          ln.status === "Diragukan" ? "Keterlambatan 91 - 180 hari" : "Keterlambatan kritis > 180 hari"
+                        }>
+                          {statusCfg[ln.status]?.label}
+                        </span>
+                        {outstanding > 0 && daysOverdue > 0 && (
+                          <span className="text-[10px] text-rose-500 font-bold font-mono mt-1">
+                            Telat {daysOverdue} hari
+                          </span>
+                        )}
+                        {outstanding > 0 && daysOverdue === 0 && (
+                          <span className="text-[9px] text-slate-400 font-mono mt-1">
+                            Jatuh Tempo: {ln.dueDate}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-center">
                       <button

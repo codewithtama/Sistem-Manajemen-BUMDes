@@ -152,6 +152,9 @@ export default function App() {
                   alokasiSosial={state.alokasiSosial}
                   triggerPrintLPJ={state.triggerPrintLPJ}
                   setActiveTab={state.setActiveTab}
+                  cashTransactions={state.cashTransactions}
+                  savingAccounts={state.savingAccounts}
+                  loans={state.loans}
                 />
               </div>
             )}
