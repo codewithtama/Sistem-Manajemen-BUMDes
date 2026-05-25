@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { CheckCircle, AlertTriangle, AlertOctagon, Info } from "lucide-react";
 import { useBumdesState } from "./hooks/useBumdesState";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
@@ -184,6 +185,7 @@ export default function App() {
         formConfig={state.formConfig}
         setFormConfig={state.setFormConfig}
         handleUpdateConfig={state.handleUpdateConfig}
+        handleClearMockData={state.handleClearMockData}
 
         showAddCashModal={state.showAddCashModal}
         setShowAddCashModal={state.setShowAddCashModal}
@@ -243,6 +245,29 @@ export default function App() {
         setShowReceiptModal={state.setShowReceiptModal}
         lastCompletedTx={state.lastCompletedTx}
       />
+
+      {/* Toast Notification overlay */}
+      {state.toast.visible && (
+        <div className="fixed top-4 right-4 z-50 pointer-events-auto animate-scale-up">
+          <div className={`
+            flex items-center gap-3 px-4.5 py-3 rounded-2xl border shadow-xl backdrop-blur-md max-w-sm
+            ${state.toast.type === "success" ? "bg-emerald-600/95 text-white border-emerald-700/50" : ""}
+            ${state.toast.type === "error" ? "bg-rose-600/95 text-white border-rose-700/50" : ""}
+            ${state.toast.type === "warning" ? "bg-amber-500/95 text-white border-amber-600/50" : ""}
+            ${state.toast.type === "info" ? "bg-slate-900/95 text-white border-slate-950/50" : ""}
+          `}>
+            <div className="shrink-0">
+              {state.toast.type === "success" && <CheckCircle className="w-5 h-5" />}
+              {state.toast.type === "error" && <AlertOctagon className="w-5 h-5" />}
+              {state.toast.type === "warning" && <AlertTriangle className="w-5 h-5" />}
+              {state.toast.type === "info" && <Info className="w-5 h-5" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold leading-relaxed break-words">{state.toast.message}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

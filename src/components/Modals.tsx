@@ -77,6 +77,7 @@ interface ModalsProps {
   formConfig: BUMDesConfig;
   setFormConfig: (c: BUMDesConfig) => void;
   handleUpdateConfig: (e: React.FormEvent) => void;
+  handleClearMockData?: () => void;
 
   showAddCashModal: boolean;
   setShowAddCashModal: (s: boolean) => void;
@@ -151,6 +152,7 @@ export default function Modals({
   showEditLoanModal, setShowEditLoanModal, editingLoan, setEditingLoan, handleUpdateLoan,
   showAmortizationModal, setShowAmortizationModal, amortizationLoan,
   showReceiptModal, setShowReceiptModal, lastCompletedTx,
+  handleClearMockData,
 }: ModalsProps) {
   return (
     <>
@@ -180,6 +182,17 @@ export default function Modals({
                 </Field>
               </div>
               <SubmitButton>Simpan Konfigurasi</SubmitButton>
+              {handleClearMockData && (
+                <div className="pt-3 border-t border-slate-100 mt-3">
+                  <button
+                    type="button"
+                    onClick={handleClearMockData}
+                    className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-lg text-[10px] transition cursor-pointer uppercase tracking-wider border border-rose-100"
+                  >
+                    Bersihkan Semua Data Contoh (Go Live)
+                  </button>
+                </div>
+              )}
             </form>
           </ModalPanel>
         </ModalWrapper>

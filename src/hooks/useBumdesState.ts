@@ -135,6 +135,30 @@ export function useBumdesState() {
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [lastCompletedTx, setLastCompletedTx] = useState<any | null>(null);
 
+  // ── Toast Notifications State ──────────────────────────────────────────────
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "warning" | "info"; visible: boolean }>({
+    message: "",
+    type: "success",
+    visible: false,
+  });
+
+  const showToast = (message: string, type: "success" | "error" | "warning" | "info" = "success") => {
+    setToast({ message, type, visible: true });
+  };
+
+  const hideToast = () => {
+    setToast(prev => ({ ...prev, visible: false }));
+  };
+
+  useEffect(() => {
+    if (toast.visible) {
+      const timer = setTimeout(() => {
+        hideToast();
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast.visible]);
+
   // ── Forms ───────────────────────────────────────────────────────────────────
   const [formConfig, setFormConfig] = useState<BUMDesConfig>({ ...config });
 
@@ -211,22 +235,23 @@ export function useBumdesState() {
   const handleUpdateConfig = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formConfig.bumdesName || !formConfig.villageName || !formConfig.directorName || !formConfig.treasurerName) {
-      alert("Harap lengkapi semua parameter administrasi BUMDes.");
+      showToast("Harap lengkapi semua parameter administrasi BUMDes.", "warning");
       return;
     }
     setConfig(formConfig);
     setShowConfigModal(false);
+    showToast("Konfigurasi administrasi BUMDes berhasil diperbarui!", "success");
   };
 
   // ── Cash Transactions ────────────────────────────────────────────────────────
   const handleAddCashTransaction = (e: React.FormEvent) => {
     e.preventDefault();
     if (formCash.amount <= 0) {
-      alert("Jumlah nominal transaksi harus lebih besar dari Rp 0.");
+      showToast("Jumlah nominal transaksi harus lebih besar dari Rp 0.", "warning");
       return;
     }
     if (!formCash.description.trim()) {
-      alert("Harap berikan keterangan catatan transaksi kas.");
+      showToast("Harap berikan keterangan catatan transaksi kas.", "warning");
       return;
     }
     const finalDesc = formCash.category === "Pendapatan Unit Usaha" && formCash.unitUsaha
@@ -250,6 +275,7 @@ export function useBumdesState() {
       description: "",
       unitUsaha: "Toko Desa"
     });
+    showToast("Transaksi kas masuk berhasil dicatat di BKU!", "success");
   };
 
   const handleOpenEditCash = (tx: CashTransaction) => {
@@ -261,16 +287,17 @@ export function useBumdesState() {
     e.preventDefault();
     if (!editingCash) return;
     if (editingCash.amount <= 0) {
-      alert("Jumlah nominal transaksi harus lebih besar dari Rp 0.");
+      showToast("Jumlah nominal transaksi harus lebih besar dari Rp 0.", "warning");
       return;
     }
     if (!editingCash.description.trim()) {
-      alert("Harap berikan keterangan transaksi kas.");
+      showToast("Harap berikan keterangan transaksi kas.", "warning");
       return;
     }
     setCashTransactions(prev => prev.map(t => t.id === editingCash.id ? editingCash : t));
     setShowEditCashModal(false);
     setEditingCash(null);
+    showToast("Transaksi kas berhasil dikoreksi!", "success");
   };
 
   const handleDeleteCashTransaction = (id: string) => {
@@ -282,11 +309,11 @@ export function useBumdesState() {
   const handleAddCitizen = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formCitizen.name.trim()) {
-      alert("Nama warga wajib diisi.");
+      showToast("Nama warga wajib diisi.", "warning");
       return;
     }
     if (!formCitizen.nik || formCitizen.nik.length !== 16) {
-      alert("NIK harus berupa 16 digit angka.");
+      showToast("NIK harus berupa 16 digit angka.", "warning");
       return;
     }
     const newCitizen: Citizen = {
@@ -301,6 +328,7 @@ export function useBumdesState() {
     setCitizens([...citizens, newCitizen]);
     setShowAddCitizenModal(false);
     setFormCitizen({ name: "", nik: "", phone: "", rtRw: "", address: "" });
+    showToast(`Data warga ${newCitizen.name} berhasil ditambahkan!`, "success");
   };
 
   const handleOpenEditCitizen = (citizen: Citizen) => {
@@ -312,11 +340,11 @@ export function useBumdesState() {
     e.preventDefault();
     if (!editingCitizen) return;
     if (!editingCitizen.name.trim()) {
-      alert("Nama warga wajib diisi.");
+      showToast("Nama warga wajib diisi.", "warning");
       return;
     }
     if (!editingCitizen.nik || editingCitizen.nik.length !== 16) {
-      alert("NIK harus berupa 16 digit angka.");
+      showToast("NIK harus berupa 16 digit angka.", "warning");
       return;
     }
     setCitizens(prev => prev.map(c => c.id === editingCitizen.id ? editingCitizen : c));
@@ -331,17 +359,19 @@ export function useBumdesState() {
     }
     setShowEditCitizenModal(false);
     setEditingCitizen(null);
+    showToast("Profil data warga berhasil diperbarui!", "success");
   };
 
   const handleDeleteCitizen = (id: string) => {
     const hasLoan = loans.some(l => l.citizenId === id && l.amountPaidPrincipal < l.amount);
     if (hasLoan) {
-      alert("Warga ini masih memiliki pinjaman aktif yang belum lunas. Lunaskan pinjaman terlebih dahulu sebelum menghapus data warga.");
+      showToast("Warga ini masih memiliki pinjaman aktif yang belum lunas. Lunaskan kredit terlebih dahulu.", "error");
       return;
     }
     if (!window.confirm("Hapus data warga ini beserta rekening simpanan yang terkait? Tindakan tidak dapat dibatalkan.")) return;
     setCitizens(prev => prev.filter(c => c.id !== id));
     setSavingAccounts(prev => prev.filter(a => a.citizenId !== id));
+    showToast("Data warga berhasil dihapus beserta buku rekeningnya.", "success");
   };
 
   // ── Savings ──────────────────────────────────────────────────────────────────
@@ -349,16 +379,16 @@ export function useBumdesState() {
     e.preventDefault();
     const { citizenId, savingType, type, amount, description } = formSavingAction;
     if (!citizenId) {
-      alert("Pilih warga terlebih dahulu.");
+      showToast("Pilih warga terlebih dahulu.", "warning");
       return;
     }
     if (amount <= 0) {
-      alert("Nominal mutasi tabungan harus lebih besar dari Rp 0.");
+      showToast("Nominal mutasi tabungan harus lebih besar dari Rp 0.", "warning");
       return;
     }
     const citizen = citizens.find(c => c.id === citizenId);
     if (!citizen) {
-      alert("Warga terdaftar tidak ditemukan.");
+      showToast("Warga terdaftar tidak ditemukan.", "error");
       return;
     }
     let account = savingAccounts.find(a => a.citizenId === citizenId && a.savingType === savingType);
@@ -375,11 +405,11 @@ export function useBumdesState() {
       updatedAccounts.push(account);
     }
     if (type === "tarik" && account.balance < amount) {
-      alert("Saldo tidak mencukupi untuk melakukan penarikan. Saldo saat ini: " + formatRupiah(account.balance));
+      showToast("Saldo tidak mencukupi untuk melakukan penarikan. Saldo saat ini: " + formatRupiah(account.balance), "error");
       return;
     }
     if (type === "tarik" && amount > currentGeneralCash) {
-      alert("Gagal melakukan penarikan. Saldo kas utama BUMDes tidak mencukupi untuk memproses penarikan ini. Kas BUMDes saat ini: " + formatRupiah(currentGeneralCash));
+      showToast("Gagal melakukan penarikan. Saldo kas utama BUMDes tidak mencukupi.", "error");
       return;
     }
     const updatedBalance = type === "setor" ? account.balance + amount : account.balance - amount;
@@ -430,27 +460,27 @@ export function useBumdesState() {
     e.preventDefault();
     const { citizenId, amount, tenorMonths, repaymentPeriod, interestPercentage, dateDisbursed } = formLoan;
     if (!citizenId) {
-      alert("Harap pilih warga penerima pinjaman.");
+      showToast("Harap pilih warga penerima pinjaman.", "warning");
       return;
     }
     if (amount <= 0) {
-      alert("Besar pokok pinjaman harus lebih besar dari Rp 0.");
+      showToast("Besar pokok pinjaman harus lebih besar dari Rp 0.", "warning");
       return;
     }
     if (tenorMonths <= 0) {
-      alert("Tenor jangka waktu pinjaman minimal 1 bulan.");
+      showToast("Tenor jangka waktu pinjaman minimal 1 bulan.", "warning");
       return;
     }
     const citizen = citizens.find(c => c.id === citizenId);
     if (!citizen) {
-      alert("Warga terdaftar tidak ditemukan.");
+      showToast("Warga terdaftar tidak ditemukan.", "error");
       return;
     }
     const totalCashIn = cashTransactions.filter(tx => tx.type === "masuk").reduce((s, tx) => s + tx.amount, 0);
     const totalCashOut = cashTransactions.filter(tx => tx.type === "keluar").reduce((s, tx) => s + tx.amount, 0);
     const availableC = totalCashIn - totalCashOut;
     if (amount > availableC) {
-      alert("Kas utama BUMDes tidak mencukupi untuk menyalurkan pinjaman ini. Sisa Kas saat ini: " + formatRupiah(availableC));
+      showToast("Kas utama BUMDes tidak mencukupi untuk menyalurkan pinjaman ini.", "error");
       return;
     }
     const d = new Date(dateDisbursed);
@@ -501,7 +531,7 @@ export function useBumdesState() {
     e.preventDefault();
     if (!editingLoan) return;
     if (editingLoan.amount <= 0) {
-      alert("Pokok pinjaman harus lebih besar dari Rp 0.");
+      showToast("Pokok pinjaman harus lebih besar dari Rp 0.", "warning");
       return;
     }
     setLoans(prev => prev.map(l => l.id === editingLoan.id ? {
@@ -524,16 +554,16 @@ export function useBumdesState() {
     e.preventDefault();
     const { loanId, principalPaid, interestPaid, finePaid, description } = formRepayment;
     if (!loanId) {
-      alert("Harap pilih rekening debitur aktif.");
+      showToast("Harap pilih rekening debitur aktif.", "warning");
       return;
     }
     if (principalPaid <= 0 && interestPaid <= 0) {
-      alert("Harap isi alokasi pembayaran Pokok atau Jasa Administratif secara benar.");
+      showToast("Harap isi alokasi pembayaran Pokok atau Jasa Administratif secara benar.", "warning");
       return;
     }
     const loan = loans.find(l => l.id === loanId);
     if (!loan) {
-      alert("Data pinjaman aktif tidak ditemukan.");
+      showToast("Data pinjaman aktif tidak ditemukan.", "error");
       return;
     }
     const totalRepay = Number(principalPaid) + Number(interestPaid) + Number(finePaid);
@@ -634,7 +664,7 @@ export function useBumdesState() {
       try {
         const data = JSON.parse(ev.target?.result as string);
         if (!data.version || !data.config || !data.citizens) {
-          alert("File backup tidak valid atau formatnya salah. Pastikan file yang dipilih adalah hasil backup dari aplikasi ini.");
+          showToast("File backup tidak valid atau formatnya salah.", "error");
           return;
         }
         if (!window.confirm(`Restore data dari backup tanggal ${data.exportedAt?.split("T")[0] || "tidak diketahui"}?\n\nSEMUA data saat ini akan diganti. Tindakan ini tidak dapat dibatalkan.`)) return;
@@ -645,7 +675,7 @@ export function useBumdesState() {
         setLoans(data.loans || []);
         setLoanRepayments(data.loanRepayments || []);
         setCashTransactions(data.cashTransactions || []);
-        alert("Data berhasil dipulihkan dari file backup.");
+        showToast("Data BUMDes berhasil dipulihkan dari file backup!", "success");
       } catch (err) {
         console.error("Restore failed:", err);
         alert("Gagal membaca file backup. Pastikan file tidak rusak.");
@@ -654,6 +684,44 @@ export function useBumdesState() {
     reader.readAsText(file);
     // Reset input so the same file can be re-selected
     e.target.value = "";
+  };
+
+  const handleClearMockData = () => {
+    if (!window.confirm("Hapus seluruh data uji coba (citizens, simpanan, pinjaman, dan transaksi kas lainnya)?\n\nSistem akan dibersihkan agar siap diisi dengan data warga & kas BUMDes riil desa Anda. Tindakan ini tidak dapat dibatalkan!")) {
+      return;
+    }
+    
+    // Clear localStorage
+    localStorage.removeItem("bumdes_citizens");
+    localStorage.removeItem("bumdes_saving_accounts");
+    localStorage.removeItem("bumdes_saving_txs");
+    localStorage.removeItem("bumdes_loans");
+    localStorage.removeItem("bumdes_repayments");
+    
+    // Kept only BUMDes initial capital transaction in cashTransactions, so they start with APBDes initial cash
+    const initialCapTxOnly = cashTransactions.filter(t => t.category === "Modal Awal BUMDes");
+    if (initialCapTxOnly.length === 0) {
+      initialCapTxOnly.push({
+        id: "tx-1",
+        date: new Date().toISOString().split("T")[0],
+        type: "masuk",
+        category: "Modal Awal BUMDes",
+        amount: config.initialCapitalAmount,
+        description: "Penerimaan modal awal dari Anggaran Pendapatan Belanja Desa (APBDes)",
+      });
+    }
+    
+    setCitizens([]);
+    setSavingAccounts([]);
+    setSavingTransactions([]);
+    setLoans([]);
+    setLoanRepayments([]);
+    setCashTransactions(initialCapTxOnly);
+    
+    localStorage.setItem("bumdes_cash_txs", JSON.stringify(initialCapTxOnly));
+    
+    setShowConfigModal(false);
+    showToast("Seluruh data contoh berhasil dibersihkan! Sistem siap dimasuki data riil desa Anda.", "success");
   };
 
   // ── AI Chat ──────────────────────────────────────────────────────────────────
@@ -846,6 +914,7 @@ export function useBumdesState() {
     alokasiPADesa, alokasiCadangan, alokasiPengurus,
     alokasiBonusWarga, alokasiSosial,
     showReceiptModal, setShowReceiptModal,
-    lastCompletedTx, setLastCompletedTx
+    lastCompletedTx, setLastCompletedTx,
+    toast, showToast, handleClearMockData
   };
 }
