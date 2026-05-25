@@ -369,9 +369,16 @@ export function useBumdesState() {
       return;
     }
     if (!window.confirm("Hapus data warga ini beserta rekening simpanan yang terkait? Tindakan tidak dapat dibatalkan.")) return;
+    
+    // Find all related saving account IDs for this citizen
+    const relatedAccountIds = new Set(
+      savingAccounts.filter(a => a.citizenId === id).map(a => a.id)
+    );
+    
     setCitizens(prev => prev.filter(c => c.id !== id));
     setSavingAccounts(prev => prev.filter(a => a.citizenId !== id));
-    showToast("Data warga berhasil dihapus beserta buku rekeningnya.", "success");
+    setSavingTransactions(prev => prev.filter(t => !relatedAccountIds.has(t.savingAccountId)));
+    showToast("Data warga berhasil dihapus beserta seluruh buku rekening dan riwayat simpanannya.", "success");
   };
 
   // ── Savings ──────────────────────────────────────────────────────────────────
@@ -392,6 +399,16 @@ export function useBumdesState() {
       return;
     }
     let account = savingAccounts.find(a => a.citizenId === citizenId && a.savingType === savingType);
+    
+    if (type === "tarik" && (!account || account.balance < amount)) {
+      showToast("Saldo tidak mencukupi untuk melakukan penarikan. Saldo saat ini: " + formatRupiah(account?.balance || 0), "error");
+      return;
+    }
+    if (type === "tarik" && amount > currentGeneralCash) {
+      showToast("Gagal melakukan penarikan. Saldo kas utama BUMDes tidak mencukupi.", "error");
+      return;
+    }
+
     let updatedAccounts = [...savingAccounts];
     if (!account) {
       account = {
@@ -403,14 +420,6 @@ export function useBumdesState() {
         lastUpdated: new Date().toISOString().split("T")[0]
       };
       updatedAccounts.push(account);
-    }
-    if (type === "tarik" && account.balance < amount) {
-      showToast("Saldo tidak mencukupi untuk melakukan penarikan. Saldo saat ini: " + formatRupiah(account.balance), "error");
-      return;
-    }
-    if (type === "tarik" && amount > currentGeneralCash) {
-      showToast("Gagal melakukan penarikan. Saldo kas utama BUMDes tidak mencukupi.", "error");
-      return;
     }
     const updatedBalance = type === "setor" ? account.balance + amount : account.balance - amount;
     updatedAccounts = updatedAccounts.map(a =>
@@ -542,11 +551,20 @@ export function useBumdesState() {
     setEditingLoan(null);
   };
 
-  const handleDeleteLoan = (id: string) => {
+  const handleDeleteLoan = (loanId: string) => {
     if (!window.confirm("Hapus data pinjaman ini beserta seluruh riwayat angsurannya? Tindakan tidak dapat dibatalkan.")) return;
-    setLoans(prev => prev.filter(l => l.id !== id));
-    setLoanRepayments(prev => prev.filter(r => r.loanId !== id));
-    setCashTransactions(prev => prev.filter(t => t.referenceId !== id));
+    
+    // Find related repayment IDs for this loan
+    const relatedRepaymentIds = new Set(
+      loanRepayments.filter(r => r.loanId === loanId).map(r => r.id)
+    );
+    
+    setLoans(prev => prev.filter(l => l.id !== loanId));
+    setLoanRepayments(prev => prev.filter(r => r.loanId !== loanId));
+    setCashTransactions(prev => prev.filter(t => 
+      t.referenceId !== loanId && !relatedRepaymentIds.has(t.referenceId || "")
+    ));
+    showToast("Catatan kredit dan seluruh mutasi angsuran terkait berhasil dibersihkan dari Buku Kas Umum.", "success");
   };
 
   // ── Repayments ───────────────────────────────────────────────────────────────
@@ -678,7 +696,7 @@ export function useBumdesState() {
         showToast("Data BUMDes berhasil dipulihkan dari file backup!", "success");
       } catch (err) {
         console.error("Restore failed:", err);
-        alert("Gagal membaca file backup. Pastikan file tidak rusak.");
+        showToast("Gagal membaca file backup. Pastikan file tidak rusak.", "error");
       }
     };
     reader.readAsText(file);
@@ -810,26 +828,26 @@ export function useBumdesState() {
 
   const totalOtherRevenues = cashTransactions
     .filter(t => t.category === "Pendapatan Unit Usaha")
-    .reduce((s, t) => s + t.amount, 0);
+    .reduce((s, t) => s + (t.type === "masuk" ? t.amount : -t.amount), 0);
 
   const totalBumdesGrossIncome = totalFeeRevenue + totalOtherRevenues;
 
   const totalGajiBeban = cashTransactions
     .filter(t => t.category === "Beban Gaji & Honor")
-    .reduce((s, t) => s + t.amount, 0);
+    .reduce((s, t) => s + (t.type === "keluar" ? t.amount : -t.amount), 0);
 
   const totalOpsBeban = cashTransactions
     .filter(t => t.category === "Beban Operasional")
-    .reduce((s, t) => s + t.amount, 0);
+    .reduce((s, t) => s + (t.type === "keluar" ? t.amount : -t.amount), 0);
 
   const totalBumdesExpenses = totalGajiBeban + totalOpsBeban;
   const sisaHasilUsaha      = totalBumdesGrossIncome - totalBumdesExpenses;
 
-  const alokasiPADesa      = sisaHasilUsaha > 0 ? sisaHasilUsaha * 0.40 : 0;
-  const alokasiCadangan    = sisaHasilUsaha > 0 ? sisaHasilUsaha * 0.30 : 0;
-  const alokasiPengurus    = sisaHasilUsaha > 0 ? sisaHasilUsaha * 0.15 : 0;
-  const alokasiBonusWarga  = sisaHasilUsaha > 0 ? sisaHasilUsaha * 0.10 : 0;
-  const alokasiSosial      = sisaHasilUsaha > 0 ? sisaHasilUsaha * 0.05 : 0;
+  const alokasiPADesa      = sisaHasilUsaha > 0 ? Math.round(sisaHasilUsaha * 0.40) : 0;
+  const alokasiCadangan    = sisaHasilUsaha > 0 ? Math.round(sisaHasilUsaha * 0.30) : 0;
+  const alokasiPengurus    = sisaHasilUsaha > 0 ? Math.round(sisaHasilUsaha * 0.15) : 0;
+  const alokasiBonusWarga  = sisaHasilUsaha > 0 ? Math.round(sisaHasilUsaha * 0.10) : 0;
+  const alokasiSosial      = sisaHasilUsaha > 0 ? Math.round(sisaHasilUsaha * 0.05) : 0;
 
   const triggerPrintLPJ = () => { window.print(); };
 
