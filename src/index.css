@@ -73,5 +73,28 @@ body {
 /* ── Print styles ────────────────────────────────────── */
 @media print {
   .no-print { display: none !important; }
-  body { background: white; }
+  body { 
+    background: white !important; 
+    color: black !important;
+  }
+  #root, #bumdes_system, main, .max-w-7xl, .printing-section {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  #lpj_printable_sheet {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+  .page-break-before {
+    page-break-before: always !important;
+  }
+  .page-break-avoid {
+    page-break-inside: avoid !important;
+  }
 }

@@ -71,6 +71,6 @@ export interface BUMDesConfig {
   treasurerName: string;
   initialCapitalDate: string;
   initialCapitalAmount: number;
-  customInterestRate: number; // Default interest rate for simulations
+  customInterestRate: number; // Default interest rate for official credits
   finePercentagePerDay: number; // Late payment fine: % of outstanding principal per day overdue
 }

@@ -235,6 +235,10 @@ export default function App() {
         showAmortizationModal={state.showAmortizationModal}
         setShowAmortizationModal={state.setShowAmortizationModal}
         amortizationLoan={state.amortizationLoan}
+
+        showReceiptModal={state.showReceiptModal}
+        setShowReceiptModal={state.setShowReceiptModal}
+        lastCompletedTx={state.lastCompletedTx}
       />
     </div>
   );

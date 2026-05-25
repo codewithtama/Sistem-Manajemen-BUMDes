@@ -360,7 +360,7 @@ export default function DashboardOverview({
         </div>
 
         {/* Right: Recent Activity */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 flex flex-col">
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 flex flex-col h-[560px]">
           <div className="flex items-center justify-between mb-5">
             <h3 className="font-semibold text-slate-900 text-sm">Mutasi Kas Terbaru</h3>
             <button onClick={() => onNavigate("kas")} className="text-xs font-medium text-emerald-600 hover:text-emerald-700 flex items-center gap-0.5 cursor-pointer transition">
@@ -389,7 +389,7 @@ export default function DashboardOverview({
           </div>
 
           <div className="mt-5 pt-4 border-t border-slate-100">
-            <p className="text-[11px] text-slate-500 mb-2">Audit kecerdasan buatan Gemini AI tersedia untuk review administrasi regulasi otomatis.</p>
+            <p className="text-[11px] text-slate-500 mb-2">Audit kecerdasan buatan Gemini AI tersedia untuk review regulasi otomatis.</p>
             <button
               onClick={() => onNavigate("advisor")}
               className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold transition cursor-pointer"

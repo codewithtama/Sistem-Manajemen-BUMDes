@@ -223,16 +223,45 @@ export default function LaporanView({
           </div>
 
           {/* Tanda Tangan */}
-          <div className="pt-4 grid grid-cols-2 gap-8 border-t border-slate-100">
+          <div className="pt-6 grid grid-cols-1 sm:grid-cols-3 gap-6 items-center border-t border-slate-100 page-break-avoid">
             <div className="text-center">
-              <p className="text-xs text-slate-500 mb-14">Mengetahui,<br /><strong className="text-slate-700">Kepala Desa</strong></p>
-              <div className="border-b border-slate-400 mb-1" />
+              <p className="text-xs text-slate-500 mb-10">Mengetahui,<br /><strong className="text-slate-700">Kepala Desa</strong></p>
+              <div className="border-b border-slate-350 mb-1 max-w-[180px] mx-auto" />
               <p className="text-xs font-semibold text-slate-800">{config.villageHead}</p>
               <p className="text-[10px] text-slate-400">Kepala Perangkat Desa</p>
             </div>
+            
+            {/* Center Column: e-Signature QR Verification */}
+            <div className="flex flex-col items-center justify-center text-center p-3 rounded-2xl bg-slate-50 border border-slate-200/60 max-w-[160px] mx-auto">
+              <svg className="w-14 h-14 text-slate-800" viewBox="0 0 100 100" fill="currentColor">
+                <rect x="10" y="10" width="20" height="20" />
+                <rect x="15" y="15" width="10" height="10" fill="white" />
+                <rect x="70" y="10" width="20" height="20" />
+                <rect x="75" y="15" width="10" height="10" fill="white" />
+                <rect x="10" y="70" width="20" height="20" />
+                <rect x="15" y="75" width="10" height="10" fill="white" />
+                
+                <rect x="40" y="10" width="10" height="10" />
+                <rect x="55" y="15" width="10" height="5" />
+                <rect x="45" y="30" width="15" height="10" />
+                <rect x="10" y="45" width="10" height="15" />
+                <rect x="30" y="40" width="10" height="10" />
+                
+                <rect x="75" y="40" width="15" height="10" />
+                <rect x="70" y="55" width="10" height="15" />
+                <rect x="45" y="55" width="10" height="10" />
+                <rect x="40" y="75" width="20" height="15" />
+                <rect x="75" y="75" width="15" height="15" />
+                
+                <rect x="45" y="45" width="10" height="10" fill="white" />
+              </svg>
+              <span className="text-[8px] font-bold text-slate-700 mt-2.5 uppercase tracking-wider block">Verifikasi Digital</span>
+              <span className="text-[7px] text-slate-400 font-mono mt-0.5 block">REG: MD-3/2021-LPJ</span>
+            </div>
+
             <div className="text-center">
-              <p className="text-xs text-slate-500 mb-14">Disiapkan Oleh,<br /><strong className="text-slate-700">Direktur BUMDes</strong></p>
-              <div className="border-b border-slate-400 mb-1" />
+              <p className="text-xs text-slate-500 mb-10">Disiapkan Oleh,<br /><strong className="text-slate-700">Direktur BUMDes</strong></p>
+              <div className="border-b border-slate-350 mb-1 max-w-[180px] mx-auto" />
               <p className="text-xs font-semibold text-slate-800">{config.directorName}</p>
               <p className="text-[10px] text-slate-400">Direktur {config.bumdesName}</p>
             </div>

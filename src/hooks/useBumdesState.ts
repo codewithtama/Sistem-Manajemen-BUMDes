@@ -132,6 +132,8 @@ export function useBumdesState() {
   const [showAmortizationModal, setShowAmortizationModal] = useState(false);
   const [amortizationLoan, setAmortizationLoan] = useState<Loan | null>(null);
   const [showMonthlyCashModal, setShowMonthlyCashModal] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [lastCompletedTx, setLastCompletedTx] = useState<any | null>(null);
 
   // ── Forms ───────────────────────────────────────────────────────────────────
   const [formConfig, setFormConfig] = useState<BUMDesConfig>({ ...config });
@@ -141,7 +143,8 @@ export function useBumdesState() {
     type: "masuk" as "masuk" | "keluar",
     category: "Pendapatan Unit Usaha" as CashTransaction["category"],
     amount: 0,
-    description: ""
+    description: "",
+    unitUsaha: "Toko Desa"
   });
 
   const [formCitizen, setFormCitizen] = useState({
@@ -226,13 +229,16 @@ export function useBumdesState() {
       alert("Harap berikan keterangan catatan transaksi kas.");
       return;
     }
+    const finalDesc = formCash.category === "Pendapatan Unit Usaha" && formCash.unitUsaha
+      ? `[Unit ${formCash.unitUsaha}] ${formCash.description.trim()}`
+      : formCash.description.trim();
     const newTx: CashTransaction = {
       id: "tx-" + Date.now(),
       date: formCash.date,
       type: formCash.type,
       category: formCash.category,
       amount: formCash.amount,
-      description: formCash.description
+      description: finalDesc
     };
     setCashTransactions([...cashTransactions, newTx]);
     setShowAddCashModal(false);
@@ -241,7 +247,8 @@ export function useBumdesState() {
       type: "masuk",
       category: "Pendapatan Unit Usaha",
       amount: 0,
-      description: ""
+      description: "",
+      unitUsaha: "Toko Desa"
     });
   };
 
@@ -402,6 +409,20 @@ export function useBumdesState() {
     setCashTransactions([...cashTransactions, newGeneralTx]);
     setShowSavingActionModal(false);
     setFormSavingAction({ citizenId: "", savingType: "Sukarela", type: "setor", amount: 0, description: "" });
+    setLastCompletedTx({
+      title: type === "setor" ? "KUITANSI SETORAN TABUNGAN" : "KUITANSI PENARIKAN TABUNGAN",
+      citizenName: citizen.name,
+      date: newSavingTx.date,
+      type: type === "setor" ? "SETORAN DANA (+)" : "PENARIKAN TUNAI (-)",
+      amount: amount,
+      details: [
+        { label: "Nomor Rekening", value: account?.id || `sa-${Date.now().toString().slice(-4)}` },
+        { label: "Jenis Simpanan", value: savingType },
+        { label: "Keterangan", value: newSavingTx.description },
+        { label: "Saldo Akhir Rekening", value: formatRupiah(updatedBalance) }
+      ]
+    });
+    setShowReceiptModal(true);
   };
 
   // ── Loans ────────────────────────────────────────────────────────────────────
@@ -550,11 +571,30 @@ export function useBumdesState() {
       description: `Setoran Angsuran Simpan Pinjam - ${loan.citizenName} (Pokok: ${formatRupiah(Number(principalPaid))} + Jasa: ${formatRupiah(Number(interestPaid))})`,
       referenceId: newRepayment.id
     };
+    const targetLoan = updatedLoans.find(l => l.id === loanId);
+    const finalRemaining = targetLoan ? (targetLoan.amount - targetLoan.amountPaidPrincipal) : 0;
+
     setLoans(updatedLoans);
     setLoanRepayments([...loanRepayments, newRepayment]);
     setCashTransactions([...cashTransactions, newGeneralTx]);
     setShowRepaymentModal(false);
     setFormRepayment({ loanId: "", principalPaid: 0, interestPaid: 0, finePaid: 0, description: "" });
+    setLastCompletedTx({
+      title: "KUITANSI ANGSURAN PINJAMAN",
+      citizenName: loan.citizenName,
+      date: newRepayment.date,
+      type: "ANGSURAN KREDIT (-)",
+      amount: totalRepay,
+      details: [
+        { label: "Nomor Rekening", value: loanId },
+        { label: "Angsuran Pokok", value: formatRupiah(Number(principalPaid)) },
+        { label: "Jasa Administratif", value: formatRupiah(Number(interestPaid)) },
+        { label: "Denda Overdue", value: formatRupiah(Number(finePaid)) },
+        { label: "Keterangan", value: newRepayment.description },
+        { label: "Sisa Pokok Pinjaman", value: finalRemaining > 0 ? formatRupiah(finalRemaining) : "LUNAS" }
+      ]
+    });
+    setShowReceiptModal(true);
   };
 
   // ── Amortization ─────────────────────────────────────────────────────────────
@@ -804,6 +844,8 @@ export function useBumdesState() {
     totalGajiBeban, totalOpsBeban, totalBumdesExpenses,
     sisaHasilUsaha,
     alokasiPADesa, alokasiCadangan, alokasiPengurus,
-    alokasiBonusWarga, alokasiSosial
+    alokasiBonusWarga, alokasiSosial,
+    showReceiptModal, setShowReceiptModal,
+    lastCompletedTx, setLastCompletedTx
   };
 }

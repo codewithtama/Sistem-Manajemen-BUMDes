@@ -80,7 +80,7 @@ interface ModalsProps {
 
   showAddCashModal: boolean;
   setShowAddCashModal: (s: boolean) => void;
-  formCash: { date: string; type: "masuk"|"keluar"; category: CashTransaction["category"]; amount: number; description: string; };
+  formCash: { date: string; type: "masuk"|"keluar"; category: CashTransaction["category"]; amount: number; description: string; unitUsaha?: string; };
   setFormCash: (v: any) => void;
   handleAddCashTransaction: (e: React.FormEvent) => void;
 
@@ -132,6 +132,11 @@ interface ModalsProps {
   showAmortizationModal: boolean;
   setShowAmortizationModal: (s: boolean) => void;
   amortizationLoan: Loan | null;
+
+  // ── Receipt Props ──
+  showReceiptModal: boolean;
+  setShowReceiptModal: (s: boolean) => void;
+  lastCompletedTx: any | null;
 }
 
 export default function Modals({
@@ -145,6 +150,7 @@ export default function Modals({
   showEditCashModal, setShowEditCashModal, editingCash, setEditingCash, handleUpdateCashTransaction,
   showEditLoanModal, setShowEditLoanModal, editingLoan, setEditingLoan, handleUpdateLoan,
   showAmortizationModal, setShowAmortizationModal, amortizationLoan,
+  showReceiptModal, setShowReceiptModal, lastCompletedTx,
 }: ModalsProps) {
   return (
     <>
@@ -204,6 +210,16 @@ export default function Modals({
                   <option value="Lain-lain">Lain-lain</option>
                 </select>
               </Field>
+              {formCash.category === "Pendapatan Unit Usaha" && (
+                <Field label="Unit Usaha Desa Penghasil">
+                  <select className={selectCls} value={formCash.unitUsaha || "Toko Desa"} onChange={e => setFormCash({ ...formCash, unitUsaha: e.target.value })}>
+                    <option value="Toko Desa">Unit Toko Desa</option>
+                    <option value="Air Bersih">Unit Air Bersih & PAMSIMAS</option>
+                    <option value="Sewa Alat">Unit Sewa Alat & Mesin Tani</option>
+                    <option value="Sampah Desa">Unit Kebersihan & Sampah</option>
+                  </select>
+                </Field>
+              )}
               <Field label="Nominal (Rp)">
                 <input type="text" className={inputCls + " font-mono"} placeholder="0" value={formatIndoNumber(formCash.amount)} onChange={e => setFormCash({ ...formCash, amount: parseIndoNumber(e.target.value) })} />
               </Field>
@@ -332,12 +348,27 @@ export default function Modals({
                     const lId = e.target.value;
                     const match = loans.find(l => l.id === lId);
                     if (match) {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      const due = new Date(match.dueDate);
+                      due.setHours(0, 0, 0, 0);
+                      
+                      const diffMs = today.getTime() - due.getTime();
+                      const daysOverdue = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                      
+                      let calculatedFine = 0;
+                      if (daysOverdue > 0) {
+                        const outstandingPrincipal = match.amount - match.amountPaidPrincipal;
+                        const fineRate = formConfig.finePercentagePerDay || 0.1;
+                        calculatedFine = Math.round(outstandingPrincipal * (fineRate / 100) * daysOverdue);
+                      }
+
                       setFormRepayment({
                         loanId: lId,
                         principalPaid: Math.round(match.amount / match.tenorMonths),
                         interestPaid: Math.round(match.amount * (match.interestPercentage / 100)),
-                        finePaid: 0,
-                        description: `Setoran angsuran — ${match.citizenName}`,
+                        finePaid: calculatedFine,
+                        description: `Setoran angsuran — ${match.citizenName}${daysOverdue > 0 ? ` (Denda terlambat ${daysOverdue} hari)` : ''}`,
                       });
                     } else {
                       setFormRepayment({ loanId: "", principalPaid: 0, interestPaid: 0, finePaid: 0, description: "" });
@@ -481,7 +512,7 @@ export default function Modals({
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-900 text-white">
               <div>
-                <h3 className="font-bold text-sm">Simulasi Jadwal Amortisasi</h3>
+                <h3 className="font-bold text-sm">Jadwal Angsuran Resmi & Buku Penagihan</h3>
                 <p className="text-[10px] text-slate-400 mt-0.5">Debitur: <span className="text-emerald-400 font-semibold">{amortizationLoan.citizenName}</span></p>
               </div>
               <button
@@ -557,10 +588,74 @@ export default function Modals({
                 </table>
               </div>
               <div className="mt-4 flex justify-between items-center text-[10px] text-slate-400">
-                <span>* Catatan: Estimasi tanggal jatuh tempo di atas berasumsi pembayaran tertib.</span>
+                <span>* Catatan: Lembar penagihan resmi BUMDes Sukamaju sesuai kesepakatan mufakat.</span>
                 <span className="font-semibold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded px-1.5 py-0.5">Suku Bunga Flat</span>
               </div>
             </div>
+          </div>
+        </ModalWrapper>
+      )}
+
+      {/* 11. Kuitansi Struk Termal */}
+      {showReceiptModal && lastCompletedTx && (
+        <ModalWrapper onClose={() => setShowReceiptModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xs overflow-hidden p-6 animate-scale-up font-mono text-xs text-slate-800 relative print:p-2 print:border-none print:shadow-none">
+            
+            {/* Thermal Print Header */}
+            <div className="text-center border-b border-dashed border-slate-300 pb-4">
+              <span className="font-bold text-sm block tracking-tight">{formConfig.bumdesName}</span>
+              <span className="text-[10px] text-slate-500 block mt-0.5">{formConfig.villageName}</span>
+              <span className="text-[9px] text-slate-400 block mt-0.5">Petugas: {formConfig.treasurerName}</span>
+            </div>
+
+            {/* Receipt Title */}
+            <div className="text-center py-3">
+              <span className="font-bold text-[10px] uppercase tracking-wider block">{lastCompletedTx.title}</span>
+              <span className="text-[9px] text-slate-400 block mt-0.5">Tanggal: {lastCompletedTx.date}</span>
+            </div>
+
+            {/* Details Grid */}
+            <div className="space-y-1.5 py-3 border-t border-b border-dashed border-slate-300">
+              <div className="flex justify-between gap-2">
+                <span className="text-slate-400">Nasabah:</span>
+                <span className="font-bold text-slate-700 truncate max-w-[120px]">{lastCompletedTx.citizenName}</span>
+              </div>
+              {lastCompletedTx.details.map((det: any, i: number) => (
+                <div key={i} className="flex justify-between gap-2">
+                  <span className="text-slate-400">{det.label}:</span>
+                  <span className="text-slate-700 font-semibold">{det.value}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Total Row */}
+            <div className="flex justify-between items-center py-4 border-b border-dashed border-slate-300">
+              <span className="font-bold text-slate-700">TOTAL BAYAR</span>
+              <span className="text-sm font-extrabold text-slate-900">{formatRupiah(lastCompletedTx.amount)}</span>
+            </div>
+
+            {/* Footer / Greeting */}
+            <div className="text-center pt-4 pb-2 space-y-1">
+              <p className="text-[10px] text-slate-500 leading-normal">Terima kasih atas partisipasi Anda membangun desa mandiri.</p>
+              <p className="text-[8px] text-slate-400">Sistem Informasi BUMDes Mandiri v2.0</p>
+            </div>
+
+            {/* Action Buttons for Print */}
+            <div className="mt-4 flex gap-2 no-print">
+              <button
+                onClick={() => window.print()}
+                className="flex-1 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold text-center transition cursor-pointer"
+              >
+                Cetak Struk
+              </button>
+              <button
+                onClick={() => setShowReceiptModal(false)}
+                className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-[10px] font-bold text-center transition cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+            
           </div>
         </ModalWrapper>
       )}
