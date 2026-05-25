@@ -109,6 +109,29 @@ interface ModalsProps {
   setFormRepayment: (v: any) => void;
   handleRepayLoan: (e: React.FormEvent) => void;
   loans: Loan[];
+
+  // ── Edit & Amortization Props ──
+  showEditCitizenModal: boolean;
+  setShowEditCitizenModal: (s: boolean) => void;
+  editingCitizen: Citizen | null;
+  setEditingCitizen: (c: Citizen | null) => void;
+  handleUpdateCitizen: (e: React.FormEvent) => void;
+
+  showEditCashModal: boolean;
+  setShowEditCashModal: (s: boolean) => void;
+  editingCash: CashTransaction | null;
+  setEditingCash: (t: CashTransaction | null) => void;
+  handleUpdateCashTransaction: (e: React.FormEvent) => void;
+
+  showEditLoanModal: boolean;
+  setShowEditLoanModal: (s: boolean) => void;
+  editingLoan: Loan | null;
+  setEditingLoan: (l: Loan | null) => void;
+  handleUpdateLoan: (e: React.FormEvent) => void;
+
+  showAmortizationModal: boolean;
+  setShowAmortizationModal: (s: boolean) => void;
+  amortizationLoan: Loan | null;
 }
 
 export default function Modals({
@@ -118,6 +141,10 @@ export default function Modals({
   showSavingActionModal, setShowSavingActionModal, formSavingAction, setFormSavingAction, handleSavingAction, citizens,
   showNewLoanModal, setShowNewLoanModal, formLoan, setFormLoan, handleDisburseLoan,
   showRepaymentModal, setShowRepaymentModal, formRepayment, setFormRepayment, handleRepayLoan, loans,
+  showEditCitizenModal, setShowEditCitizenModal, editingCitizen, setEditingCitizen, handleUpdateCitizen,
+  showEditCashModal, setShowEditCashModal, editingCash, setEditingCash, handleUpdateCashTransaction,
+  showEditLoanModal, setShowEditLoanModal, editingLoan, setEditingLoan, handleUpdateLoan,
+  showAmortizationModal, setShowAmortizationModal, amortizationLoan,
 }: ModalsProps) {
   return (
     <>
@@ -344,6 +371,197 @@ export default function Modals({
               <SubmitButton>Rekam Setoran</SubmitButton>
             </form>
           </ModalPanel>
+        </ModalWrapper>
+      )}
+
+      {/* 7. Edit Warga */}
+      {showEditCitizenModal && editingCitizen && (
+        <ModalWrapper onClose={() => setShowEditCitizenModal(false)}>
+          <ModalPanel title="Edit Data Warga" onClose={() => setShowEditCitizenModal(false)}>
+            <form onSubmit={handleUpdateCitizen} className="p-6 space-y-4">
+              <Field label="Nama Lengkap (sesuai KTP)">
+                <input className={inputCls} placeholder="Ahmad Subarjo" value={editingCitizen.name} onChange={e => setEditingCitizen({ ...editingCitizen, name: e.target.value })} />
+              </Field>
+              <Field label="Nomor NIK (16 digit)">
+                <input className={inputCls + " font-mono tracking-widest"} placeholder="3204120000000000" maxLength={16} value={editingCitizen.nik} onChange={e => setEditingCitizen({ ...editingCitizen, nik: e.target.value.replace(/\D/g, "") })} />
+              </Field>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="No. Telepon (WA)">
+                  <input className={inputCls + " font-mono"} value={editingCitizen.phone} onChange={e => setEditingCitizen({ ...editingCitizen, phone: e.target.value })} />
+                </Field>
+                <Field label="RT / RW">
+                  <input className={inputCls} placeholder="RT 02 / RW 03" value={editingCitizen.rtRw} onChange={e => setEditingCitizen({ ...editingCitizen, rtRw: e.target.value })} />
+                </Field>
+              </div>
+              <Field label="Alamat Dusun">
+                <input className={inputCls} placeholder="Dusun Krajan No. 12" value={editingCitizen.address} onChange={e => setEditingCitizen({ ...editingCitizen, address: e.target.value })} />
+              </Field>
+              <SubmitButton>Simpan Perubahan</SubmitButton>
+            </form>
+          </ModalPanel>
+        </ModalWrapper>
+      )}
+
+      {/* 8. Edit Transaksi Kas */}
+      {showEditCashModal && editingCash && (
+        <ModalWrapper onClose={() => setShowEditCashModal(false)}>
+          <ModalPanel title="Koreksi Transaksi Kas" onClose={() => setShowEditCashModal(false)}>
+            <form onSubmit={handleUpdateCashTransaction} className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Tanggal">
+                  <input type="date" className={inputCls} value={editingCash.date} onChange={e => setEditingCash({ ...editingCash, date: e.target.value })} />
+                </Field>
+                <Field label="Jenis Arus Kas">
+                  <select className={selectCls} value={editingCash.type} onChange={e => setEditingCash({ ...editingCash, type: e.target.value as "masuk"|"keluar" })}>
+                    <option value="masuk">Kas Masuk (Debit)</option>
+                    <option value="keluar">Kas Keluar (Kredit)</option>
+                  </select>
+                </Field>
+              </div>
+              <Field label="Kategori Rekening">
+                <select className={selectCls} value={editingCash.category} onChange={e => setEditingCash({ ...editingCash, category: e.target.value as CashTransaction["category"] })}>
+                  <option value="Pendapatan Unit Usaha">Pendapatan Unit Usaha</option>
+                  <option value="Beban Gaji & Honor">Beban Gaji & Honor</option>
+                  <option value="Beban Operasional">Beban Operasional</option>
+                  <option value="Modal Awal BUMDes">Modal Awal BUMDes</option>
+                  <option value="Lain-lain">Lain-lain</option>
+                </select>
+              </Field>
+              <Field label="Nominal (Rp)">
+                <input type="text" className={inputCls + " font-mono"} placeholder="0" value={formatIndoNumber(editingCash.amount)} onChange={e => setEditingCash({ ...editingCash, amount: parseIndoNumber(e.target.value) })} />
+              </Field>
+              <Field label="Keterangan">
+                <textarea rows={2} className={inputCls + " resize-none"} placeholder="Deskripsi transaksi..." value={editingCash.description} onChange={e => setEditingCash({ ...editingCash, description: e.target.value })} />
+              </Field>
+              <SubmitButton>Simpan Koreksi Kas</SubmitButton>
+            </form>
+          </ModalPanel>
+        </ModalWrapper>
+      )}
+
+      {/* 9. Edit Pinjaman */}
+      {showEditLoanModal && editingLoan && (
+        <ModalWrapper onClose={() => setShowEditLoanModal(false)}>
+          <ModalPanel title="Edit Parameter Pinjaman" onClose={() => setShowEditLoanModal(false)}>
+            <form onSubmit={handleUpdateLoan} className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Pokok Pinjaman (Rp)">
+                  <input type="text" className={inputCls + " font-mono"} placeholder="10.000.000" value={formatIndoNumber(editingLoan.amount)} onChange={e => setEditingLoan({ ...editingLoan, amount: parseIndoNumber(e.target.value) })} />
+                </Field>
+                <Field label="Jasa Admin (% / bulan)">
+                  <input type="number" step="0.1" className={inputCls + " font-mono"} value={editingLoan.interestPercentage} onChange={e => setEditingLoan({ ...editingLoan, interestPercentage: Number(e.target.value) })} />
+                </Field>
+                <Field label="Tenor (bulan)">
+                  <input type="number" className={inputCls + " font-mono"} value={editingLoan.tenorMonths} onChange={e => setEditingLoan({ ...editingLoan, tenorMonths: Number(e.target.value) })} />
+                </Field>
+                <Field label="Periode Tagihan">
+                  <select className={selectCls} value={editingLoan.repaymentPeriod} onChange={e => setEditingLoan({ ...editingLoan, repaymentPeriod: e.target.value as Loan["repaymentPeriod"] })}>
+                    <option value="Bulanan">Bulanan</option>
+                    <option value="Mingguan">Mingguan</option>
+                  </select>
+                </Field>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Tanggal Pencairan">
+                  <input type="date" className={inputCls} value={editingLoan.dateDisbursed} onChange={e => setEditingLoan({ ...editingLoan, dateDisbursed: e.target.value })} />
+                </Field>
+                <Field label="Tanggal Jatuh Tempo">
+                  <input type="date" className={inputCls} value={editingLoan.dueDate} onChange={e => setEditingLoan({ ...editingLoan, dueDate: e.target.value })} />
+                </Field>
+              </div>
+              <SubmitButton>Simpan Parameter</SubmitButton>
+            </form>
+          </ModalPanel>
+        </ModalWrapper>
+      )}
+
+      {/* 10. Jadwal Amortisasi Pinjaman */}
+      {showAmortizationModal && amortizationLoan && (
+        <ModalWrapper onClose={() => setShowAmortizationModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-900 text-white">
+              <div>
+                <h3 className="font-bold text-sm">Simulasi Jadwal Amortisasi</h3>
+                <p className="text-[10px] text-slate-400 mt-0.5">Debitur: <span className="text-emerald-400 font-semibold">{amortizationLoan.citizenName}</span></p>
+              </div>
+              <button
+                onClick={() => setShowAmortizationModal(false)}
+                className="p-1.5 rounded-lg hover:bg-slate-850 text-slate-400 hover:text-white transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-6">
+              {/* Summary Cards inside Amortization */}
+              <div className="grid grid-cols-3 gap-3 mb-5 text-xs font-mono">
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                  <span className="text-slate-400 block text-[9px] uppercase tracking-wider mb-1">Pokok Pinjaman</span>
+                  <span className="font-bold text-slate-800">{formatRupiah(amortizationLoan.amount)}</span>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                  <span className="text-slate-400 block text-[9px] uppercase tracking-wider mb-1">Total Jasa ({amortizationLoan.interestPercentage}%/bln)</span>
+                  <span className="font-bold text-slate-800">{formatRupiah(Math.round(amortizationLoan.amount * (amortizationLoan.interestPercentage / 100) * amortizationLoan.tenorMonths))}</span>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                  <span className="text-slate-400 block text-[9px] uppercase tracking-wider mb-1">Tenor / Periode</span>
+                  <span className="font-bold text-slate-800">{amortizationLoan.tenorMonths} {amortizationLoan.repaymentPeriod === "Bulanan" ? "Bulan" : "Minggu"}</span>
+                </div>
+              </div>
+
+              {/* Table */}
+              <div className="overflow-y-auto max-h-80 border border-slate-100 rounded-xl">
+                <table className="w-full text-left border-collapse text-[11px] font-mono">
+                  <thead>
+                    <tr className="bg-slate-50 text-slate-500 uppercase text-[9px] border-b border-slate-100 sticky top-0">
+                      <th className="px-4 py-2.5">Ke</th>
+                      <th className="px-4 py-2.5">Estimasi Tanggal</th>
+                      <th className="px-4 py-2.5 text-right">Pokok</th>
+                      <th className="px-4 py-2.5 text-right">Jasa Admin</th>
+                      <th className="px-4 py-2.5 text-right">Jumlah Tagihan</th>
+                      <th className="px-4 py-2.5 text-right">Outstanding Pokok</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {Array.from({ length: amortizationLoan.tenorMonths }).map((_, idx) => {
+                      const installmentNum = idx + 1;
+                      
+                      // Calculate dates dynamically based on disbursement date
+                      const dateObj = new Date(amortizationLoan.dateDisbursed);
+                      if (amortizationLoan.repaymentPeriod === "Bulanan") {
+                        dateObj.setMonth(dateObj.getMonth() + installmentNum);
+                      } else {
+                        dateObj.setDate(dateObj.getDate() + (installmentNum * 7));
+                      }
+                      const estDate = dateObj.toISOString().split("T")[0];
+
+                      const monthlyPrincipal = Math.round(amortizationLoan.amount / amortizationLoan.tenorMonths);
+                      const monthlyInterest = Math.round(amortizationLoan.amount * (amortizationLoan.interestPercentage / 100));
+                      const totalBill = monthlyPrincipal + monthlyInterest;
+                      const remainingPrincipal = Math.max(0, amortizationLoan.amount - (monthlyPrincipal * installmentNum));
+                      
+                      // Check progress indicators
+                      const isPaid = amortizationLoan.amountPaidPrincipal >= (monthlyPrincipal * installmentNum);
+
+                      return (
+                        <tr key={idx} className={`hover:bg-slate-50/50 ${isPaid ? "bg-emerald-50/20 text-emerald-800" : ""}`}>
+                          <td className="px-4 py-2 font-bold">{installmentNum}</td>
+                          <td className="px-4 py-2 text-slate-500">{estDate}</td>
+                          <td className="px-4 py-2 text-right">{formatRupiah(monthlyPrincipal)}</td>
+                          <td className="px-4 py-2 text-right text-slate-500">{formatRupiah(monthlyInterest)}</td>
+                          <td className="px-4 py-2 text-right font-bold text-slate-700">{formatRupiah(totalBill)}</td>
+                          <td className="px-4 py-2 text-right text-slate-400">{formatRupiah(remainingPrincipal)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-4 flex justify-between items-center text-[10px] text-slate-400">
+                <span>* Catatan: Estimasi tanggal jatuh tempo di atas berasumsi pembayaran tertib.</span>
+                <span className="font-semibold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded px-1.5 py-0.5">Suku Bunga Flat</span>
+              </div>
+            </div>
+          </div>
         </ModalWrapper>
       )}
     </>

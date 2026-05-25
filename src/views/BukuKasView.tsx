@@ -1,5 +1,5 @@
 import React from "react";
-import { Plus, Search, Filter, ArrowDownRight, ArrowUpRight, Wallet, Download, Calendar } from "lucide-react";
+import { Plus, Search, Filter, ArrowDownRight, ArrowUpRight, Wallet, Download, Calendar, Pencil, Trash2, Lock } from "lucide-react";
 import { CashTransaction } from "../types";
 import { formatRupiah, exportToCSV } from "../data";
 
@@ -15,6 +15,8 @@ interface BukuKasViewProps {
   setCashEndDate: (val: string) => void;
   setShowAddCashModal: (show: boolean) => void;
   currentGeneralCash: number;
+  onEditCash: (tx: CashTransaction) => void;
+  onDeleteCash: (id: string) => void;
 }
 
 export default function BukuKasView({
@@ -29,6 +31,8 @@ export default function BukuKasView({
   setCashEndDate,
   setShowAddCashModal,
   currentGeneralCash,
+  onEditCash,
+  onDeleteCash,
 }: BukuKasViewProps) {
   const totalMasuk  = cashTransactions.filter(t => t.type === "masuk").reduce((s, t) => s + t.amount, 0);
   const totalKeluar = cashTransactions.filter(t => t.type === "keluar").reduce((s, t) => s + t.amount, 0);
@@ -180,42 +184,74 @@ export default function BukuKasView({
                 <th className="px-6 py-3.5">Keterangan</th>
                 <th className="px-6 py-3.5 text-right">Debit (Masuk)</th>
                 <th className="px-6 py-3.5 text-right">Kredit (Keluar)</th>
+                <th className="px-6 py-3.5 text-right">Tindakan</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-sm text-slate-400">
+                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-slate-400">
                     Tidak ada transaksi yang sesuai dengan filter.
                   </td>
                 </tr>
               )}
-              {filtered.map(tx => (
-                <tr key={tx.id} className="hover:bg-slate-50/50 transition group">
-                  <td className="px-6 py-4 text-xs text-slate-500 font-mono whitespace-nowrap">{tx.date}</td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
-                      tx.type === "masuk"
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-                        : "bg-rose-50 text-rose-600 border-rose-100"
-                    }`}>
-                      {tx.category}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-slate-700">{tx.description}</td>
-                  <td className="px-6 py-4 text-right text-sm font-semibold font-mono text-emerald-600">
-                    {tx.type === "masuk" ? formatRupiah(tx.amount) : "—"}
-                  </td>
-                  <td className="px-6 py-4 text-right text-sm font-semibold font-mono text-rose-500">
-                    {tx.type === "keluar" ? formatRupiah(tx.amount) : "—"}
-                  </td>
-                </tr>
-              ))}
+              {filtered.map(tx => {
+                const isSystemGenerated = !!tx.referenceId;
+                return (
+                  <tr key={tx.id} className="hover:bg-slate-50/50 transition group">
+                    <td className="px-6 py-4 text-xs text-slate-500 font-mono whitespace-nowrap">{tx.date}</td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                        tx.type === "masuk"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                          : "bg-rose-50 text-rose-600 border-rose-100"
+                      }`}>
+                        {tx.category}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-slate-700">{tx.description}</td>
+                    <td className="px-6 py-4 text-right text-sm font-semibold font-mono text-emerald-600">
+                      {tx.type === "masuk" ? formatRupiah(tx.amount) : "—"}
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm font-semibold font-mono text-rose-500">
+                      {tx.type === "keluar" ? formatRupiah(tx.amount) : "—"}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      {isSystemGenerated ? (
+                        <span
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold text-slate-400 bg-slate-50 rounded-lg border border-slate-200"
+                          title="Transaksi otomatis terkunci (hanya-baca)"
+                        >
+                          <Lock className="w-3 h-3 text-slate-400" />
+                          Sistem
+                        </span>
+                      ) : (
+                        <div className="flex justify-end gap-1.5">
+                          <button
+                            onClick={() => onEditCash(tx)}
+                            className="p-1.5 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition cursor-pointer"
+                            title="Koreksi Transaksi"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => onDeleteCash(tx.id)}
+                            className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                            title="Hapus Transaksi"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
             {/* Totals footer */}
             <tfoot>
               <tr className="bg-slate-50 border-t-2 border-slate-200">
-                <td colSpan={3} className="px-6 py-3 text-xs font-semibold text-slate-600 text-right">Akumulatif</td>
+                <td colSpan={4} className="px-6 py-3 text-xs font-semibold text-slate-600 text-right">Akumulatif</td>
                 <td className="px-6 py-3 text-right text-sm font-bold font-mono text-emerald-600">{formatRupiah(totalMasuk)}</td>
                 <td className="px-6 py-3 text-right text-sm font-bold font-mono text-rose-500">{formatRupiah(totalKeluar)}</td>
               </tr>

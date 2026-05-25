@@ -1,5 +1,5 @@
 import React from "react";
-import { Plus, Search, HandCoins, TrendingDown, CheckCircle, ChevronRight, Download } from "lucide-react";
+import { Plus, Search, HandCoins, TrendingDown, CheckCircle, ChevronRight, Download, Pencil, Trash2, Calendar } from "lucide-react";
 import { Loan, LoanRepayment } from "../types";
 import { formatRupiah, exportToCSV } from "../data";
 
@@ -11,18 +11,22 @@ interface PinjamanViewProps {
   setShowNewLoanModal: (show: boolean) => void;
   setShowRepaymentModal: (show: boolean) => void;
   setFormRepayment: (val: any) => void;
+  onEditLoan: (loan: Loan) => void;
+  onDeleteLoan: (id: string) => void;
+  onOpenAmortization: (loan: Loan) => void;
 }
 
 const statusCfg: Record<Loan["status"], { label: string; cls: string }> = {
-  Lancar:        { label: "Lancar",        cls: "bg-emerald-50 text-emerald-700 border-emerald-100" },
-  "Kurang Lancar": { label: "Kurang Lancar", cls: "bg-amber-50 text-amber-700 border-amber-100"    },
-  Diragukan:     { label: "Diragukan",     cls: "bg-orange-50 text-orange-700 border-orange-100"   },
-  Macet:         { label: "Macet",         cls: "bg-rose-50 text-rose-700 border-rose-100"          },
+  Lancar:        { label: "Lancar",        cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  "Kurang Lancar": { label: "Kurang Lancar", cls: "bg-amber-50 text-amber-700 border-amber-200"    },
+  Diragukan:     { label: "Diragukan",     cls: "bg-orange-50 text-orange-700 border-orange-200"   },
+  Macet:         { label: "Macet",         cls: "bg-rose-50 text-rose-700 border-rose-200"          },
 };
 
 export default function PinjamanView({
   loans, loanSearch, setLoanSearch, loanRepayments,
   setShowNewLoanModal, setShowRepaymentModal, setFormRepayment,
+  onEditLoan, onDeleteLoan, onOpenAmortization,
 }: PinjamanViewProps) {
   const filtered = [...loans]
     .sort((a, b) => b.dateDisbursed.localeCompare(a.dateDisbursed) || b.id.localeCompare(a.id))
@@ -149,13 +153,14 @@ export default function PinjamanView({
                 <th className="px-6 py-3.5 text-right">Pokok</th>
                 <th className="px-6 py-3.5 text-right">Sisa Piutang</th>
                 <th className="px-6 py-3.5">Status</th>
-                <th className="px-6 py-3.5"></th>
+                <th className="px-6 py-3.5 text-center">Jadwal</th>
+                <th className="px-6 py-3.5 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-slate-400">Tidak ada debitur yang sesuai.</td>
+                  <td colSpan={7} className="px-6 py-12 text-center text-sm text-slate-400">Tidak ada debitur yang sesuai.</td>
                 </tr>
               )}
               {filtered.map(ln => {
@@ -185,22 +190,51 @@ export default function PinjamanView({
                         {statusCfg[ln.status]?.label}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 text-center">
                       <button
-                        onClick={() => {
-                          setFormRepayment({
-                            loanId: ln.id,
-                            principalPaid: Math.round(ln.amount / ln.tenorMonths),
-                            interestPaid: Math.round(ln.amount * (ln.interestPercentage / 100)),
-                            finePaid: 0,
-                            description: `Pembayaran angsuran rutin ${ln.citizenName}`,
-                          });
-                          setShowRepaymentModal(true);
-                        }}
-                        className="flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition cursor-pointer"
+                        onClick={() => onOpenAmortization(ln)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg hover:bg-indigo-100 hover:text-indigo-800 transition cursor-pointer"
+                        title="Lihat Jadwal Amortisasi Kredit"
                       >
-                        Angsur <ChevronRight className="w-3.5 h-3.5" />
+                        <Calendar className="w-3.5 h-3.5" />
+                        Jadwal
                       </button>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end items-center gap-2">
+                        {outstanding > 0 && (
+                          <button
+                            onClick={() => {
+                              setFormRepayment({
+                                loanId: ln.id,
+                                principalPaid: Math.round(ln.amount / ln.tenorMonths),
+                                interestPaid: Math.round(ln.amount * (ln.interestPercentage / 100)),
+                                finePaid: 0,
+                                description: `Pembayaran angsuran rutin ${ln.citizenName}`,
+                              });
+                              setShowRepaymentModal(true);
+                            }}
+                            className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 hover:text-emerald-800 transition cursor-pointer mr-1"
+                            title="Proses Setoran Angsuran"
+                          >
+                            Angsur <ChevronRight className="w-3 h-3" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => onEditLoan(ln)}
+                          className="p-1.5 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition cursor-pointer"
+                          title="Edit Parameter Kredit"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => onDeleteLoan(ln.id)}
+                          className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                          title="Hapus Rekening Kredit"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

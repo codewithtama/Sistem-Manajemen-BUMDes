@@ -371,6 +371,10 @@ export function useBumdesState() {
       alert("Saldo tidak mencukupi untuk melakukan penarikan. Saldo saat ini: " + formatRupiah(account.balance));
       return;
     }
+    if (type === "tarik" && amount > currentGeneralCash) {
+      alert("Gagal melakukan penarikan. Saldo kas utama BUMDes tidak mencukupi untuk memproses penarikan ini. Kas BUMDes saat ini: " + formatRupiah(currentGeneralCash));
+      return;
+    }
     const updatedBalance = type === "setor" ? account.balance + amount : account.balance - amount;
     updatedAccounts = updatedAccounts.map(a =>
       a.id === account!.id ? { ...a, balance: updatedBalance, lastUpdated: new Date().toISOString().split("T")[0] } : a

@@ -86,6 +86,8 @@ export default function App() {
                   setCashEndDate={state.setCashEndDate}
                   setShowAddCashModal={state.setShowAddCashModal}
                   currentGeneralCash={state.currentGeneralCash}
+                  onEditCash={state.handleOpenEditCash}
+                  onDeleteCash={state.handleDeleteCashTransaction}
                 />
               </div>
             )}
@@ -112,6 +114,9 @@ export default function App() {
                   setShowNewLoanModal={state.setShowNewLoanModal}
                   setShowRepaymentModal={state.setShowRepaymentModal}
                   setFormRepayment={state.setFormRepayment}
+                  onEditLoan={state.handleOpenEditLoan}
+                  onDeleteLoan={state.handleDeleteLoan}
+                  onOpenAmortization={state.handleOpenAmortization}
                 />
               </div>
             )}
@@ -123,6 +128,8 @@ export default function App() {
                   citizenSearch={state.citizenSearch}
                   setCitizenSearch={state.setCitizenSearch}
                   setShowAddCitizenModal={state.setShowAddCitizenModal}
+                  onEditCitizen={state.handleOpenEditCitizen}
+                  onDeleteCitizen={state.handleDeleteCitizen}
                 />
               </div>
             )}
@@ -206,6 +213,28 @@ export default function App() {
         setFormRepayment={state.setFormRepayment}
         handleRepayLoan={state.handleRepayLoan}
         loans={state.loans}
+
+        showEditCitizenModal={state.showEditCitizenModal}
+        setShowEditCitizenModal={state.setShowEditCitizenModal}
+        editingCitizen={state.editingCitizen}
+        setEditingCitizen={state.setEditingCitizen}
+        handleUpdateCitizen={state.handleUpdateCitizen}
+
+        showEditCashModal={state.showEditCashModal}
+        setShowEditCashModal={state.setShowEditCashModal}
+        editingCash={state.editingCash}
+        setEditingCash={state.setEditingCash}
+        handleUpdateCashTransaction={state.handleUpdateCashTransaction}
+
+        showEditLoanModal={state.showEditLoanModal}
+        setShowEditLoanModal={state.setShowEditLoanModal}
+        editingLoan={state.editingLoan}
+        setEditingLoan={state.setEditingLoan}
+        handleUpdateLoan={state.handleUpdateLoan}
+
+        showAmortizationModal={state.showAmortizationModal}
+        setShowAmortizationModal={state.setShowAmortizationModal}
+        amortizationLoan={state.amortizationLoan}
       />
     </div>
   );

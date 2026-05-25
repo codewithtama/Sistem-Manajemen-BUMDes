@@ -1,5 +1,5 @@
 import React from "react";
-import { Plus, Search, Users, MapPin, Phone, Calendar, Download } from "lucide-react";
+import { Plus, Search, Users, MapPin, Phone, Calendar, Download, Pencil, Trash2 } from "lucide-react";
 import { Citizen } from "../types";
 import { exportToCSV } from "../data";
 
@@ -8,6 +8,8 @@ interface WargaViewProps {
   citizenSearch: string;
   setCitizenSearch: (val: string) => void;
   setShowAddCitizenModal: (show: boolean) => void;
+  onEditCitizen: (citizen: Citizen) => void;
+  onDeleteCitizen: (id: string) => void;
 }
 
 function avatarInitials(name: string): string {
@@ -22,7 +24,7 @@ const avatarColors = [
   "bg-indigo-500", "bg-rose-500", "bg-teal-500", "bg-orange-500",
 ];
 
-export default function WargaView({ citizens, citizenSearch, setCitizenSearch, setShowAddCitizenModal }: WargaViewProps) {
+export default function WargaView({ citizens, citizenSearch, setCitizenSearch, setShowAddCitizenModal, onEditCitizen, onDeleteCitizen }: WargaViewProps) {
   const filtered = [...citizens]
     .sort((a, b) => b.joinedAt.localeCompare(a.joinedAt) || b.id.localeCompare(a.id))
     .filter(c =>
@@ -101,12 +103,13 @@ export default function WargaView({ citizens, citizenSearch, setCitizenSearch, s
                 <th className="px-6 py-3.5">Kontak</th>
                 <th className="px-6 py-3.5">Domisili</th>
                 <th className="px-6 py-3.5">Bergabung</th>
+                <th className="px-6 py-3.5 text-right">Tindakan</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-sm text-slate-400">Tidak ada warga yang sesuai dengan pencarian.</td>
+                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-slate-400">Tidak ada warga yang sesuai dengan pencarian.</td>
                 </tr>
               )}
               {filtered.map((cit, idx) => (
@@ -137,6 +140,24 @@ export default function WargaView({ citizens, citizenSearch, setCitizenSearch, s
                       <Calendar className="w-3 h-3 text-slate-400" />
                       {cit.joinedAt}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => onEditCitizen(cit)}
+                        className="p-1.5 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition cursor-pointer"
+                        title="Edit Profil Warga"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => onDeleteCitizen(cit.id)}
+                        className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                        title="Hapus Data Warga"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
