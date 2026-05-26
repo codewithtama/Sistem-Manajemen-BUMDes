@@ -18,8 +18,37 @@ import {
   initialCashTransactions,
   formatRupiah,
   computeLoanStatus,
-  exportToJSON
+  exportToJSON,
+  computeTransactionHash,
+  encryptData,
+  decryptData
 } from "../data";
+
+// Ledger Hash Chaining Helpers
+const recalculateLedgerHashes = (txs: CashTransaction[]): CashTransaction[] => {
+  const sorted = [...txs].sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+  let prevHash = "";
+  return sorted.map(tx => {
+    const hash = computeTransactionHash(tx, prevHash);
+    prevHash = hash;
+    return { ...tx, hash };
+  });
+};
+
+const verifyLedgerIntegrity = (txs: CashTransaction[]): boolean => {
+  if (txs.length === 0) return false;
+  const sorted = [...txs].sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+  let prevHash = "";
+  for (let i = 0; i < sorted.length; i++) {
+    const tx = sorted[i];
+    const computed = computeTransactionHash(tx, prevHash);
+    if (!tx.hash || tx.hash !== computed) {
+      return true; // Ledger corrupted
+    }
+    prevHash = computed;
+  }
+  return false;
+};
 
 export function useBumdesState() {
   const [activeTab, setActiveTab] = useState<string>("dashboard");
@@ -29,6 +58,18 @@ export function useBumdesState() {
   const [userRole, setUserRole] = useState<"operator" | "admin">("operator");
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [adminPasswordInput, setAdminPasswordInput] = useState("");
+
+  // ── Advanced Security States ───────────────────────────────────────────────
+  const [isLedgerCorrupted, setIsLedgerCorrupted] = useState(false);
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [cooldownSeconds, setCooldownSeconds] = useState<number>(() => {
+    const saved = sessionStorage.getItem("admin_login_cooldown_until");
+    if (saved) {
+      const remaining = Math.ceil((Number(saved) - Date.now()) / 1000);
+      return remaining > 0 ? remaining : 0;
+    }
+    return 0;
+  });
 
   // ── Persistent state ────────────────────────────────────────────────────────
   const [config, setConfig] = useState<BUMDesConfig>(() => {
@@ -111,6 +152,73 @@ export function useBumdesState() {
       return initialCashTransactions;
     }
   });
+
+  // ── Advanced Security Hooks & Effects ───────────────────────────────────────
+  // 1. Auto-Session Timeout (Auto-Lock 3 Minutes)
+  const lastActivityTime = useRef<number>(Date.now());
+  const warnToastShown = useRef<boolean>(false);
+
+  useEffect(() => {
+    if (userRole !== "admin") return;
+
+    const resetTimer = () => {
+      lastActivityTime.current = Date.now();
+      if (warnToastShown.current) {
+        warnToastShown.current = false;
+        showToast("Sesi Superuser aktif kembali.", "success");
+      }
+    };
+
+    const events = ["mousemove", "keydown", "click", "scroll", "touchstart"];
+    events.forEach(event => window.addEventListener(event, resetTimer));
+
+    const interval = setInterval(() => {
+      const elapsedSeconds = Math.floor((Date.now() - lastActivityTime.current) / 1000);
+      
+      if (elapsedSeconds >= 150 && elapsedSeconds < 180 && !warnToastShown.current) {
+        warnToastShown.current = true;
+        showToast("Peringatan: Sesi Superuser akan terkunci otomatis dalam 30 detik karena tidak ada aktivitas.", "warning");
+      } else if (elapsedSeconds >= 180) {
+        setUserRole("operator");
+        showToast("Sesi Superuser telah terkunci otomatis karena tidak ada aktivitas.", "info");
+      }
+    }, 1000);
+
+    return () => {
+      events.forEach(event => window.removeEventListener(event, resetTimer));
+      clearInterval(interval);
+    };
+  }, [userRole]);
+
+  // 2. Cooldown timer for Brute-Force lockout
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return;
+    const timer = setInterval(() => {
+      setCooldownSeconds(prev => {
+        if (prev <= 1) {
+          sessionStorage.removeItem("admin_login_cooldown_until");
+          setFailedAttempts(0);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldownSeconds]);
+
+  // 3. Passive Ledger Verification Hook
+  useEffect(() => {
+    if (cashTransactions.length === 0) {
+      setIsLedgerCorrupted(false);
+      return;
+    }
+    const hasSomeHashes = cashTransactions.some(tx => !!tx.hash);
+    if (!hasSomeHashes) {
+      setIsLedgerCorrupted(false);
+    } else {
+      setIsLedgerCorrupted(verifyLedgerIntegrity(cashTransactions));
+    }
+  }, [cashTransactions]);
 
   // ── Search & Filter ─────────────────────────────────────────────────────────
   const [cashSearch, setCashSearch] = useState("");
@@ -269,13 +377,42 @@ export function useBumdesState() {
           if (data.savingTransactions) setSavingTransactions(data.savingTransactions);
           if (data.loans) setLoans(data.loans);
           if (data.loanRepayments) setLoanRepayments(data.loanRepayments);
-          if (data.cashTransactions) setCashTransactions(data.cashTransactions);
+          
+          if (data.cashTransactions) {
+            let loadedTxs = data.cashTransactions;
+            const hasSomeHashes = loadedTxs.some((tx: any) => !!tx.hash);
+            if (!hasSomeHashes && loadedTxs.length > 0) {
+              loadedTxs = recalculateLedgerHashes(loadedTxs);
+            }
+            setCashTransactions(loadedTxs);
+            setIsLedgerCorrupted(verifyLedgerIntegrity(loadedTxs));
+          }
           showToast("Data berhasil disinkronisasi dari server database!", "success");
         } else {
           console.log("No database found on server, fallback to local storage");
+          const saved = localStorage.getItem("bumdes_cash_txs");
+          if (saved) {
+            let localTxs = JSON.parse(saved);
+            const hasSomeHashes = localTxs.some((tx: any) => !!tx.hash);
+            if (!hasSomeHashes && localTxs.length > 0) {
+              localTxs = recalculateLedgerHashes(localTxs);
+              setCashTransactions(localTxs);
+            }
+            setIsLedgerCorrupted(verifyLedgerIntegrity(localTxs));
+          }
         }
       } catch (err) {
         console.warn("Could not load database from server, using local storage instead.", err);
+        const saved = localStorage.getItem("bumdes_cash_txs");
+        if (saved) {
+          let localTxs = JSON.parse(saved);
+          const hasSomeHashes = localTxs.some((tx: any) => !!tx.hash);
+          if (!hasSomeHashes && localTxs.length > 0) {
+            localTxs = recalculateLedgerHashes(localTxs);
+            setCashTransactions(localTxs);
+          }
+          setIsLedgerCorrupted(verifyLedgerIntegrity(localTxs));
+        }
       } finally {
         setIsLoadingServerDb(false);
       }
@@ -337,14 +474,30 @@ export function useBumdesState() {
   // ── Authentication ──────────────────────────────────────────────────────────
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
+    if (cooldownSeconds > 0) {
+      showToast(`Akses terkunci. Tunggu ${cooldownSeconds} detik.`, "error");
+      return;
+    }
     const requiredPassword = config.adminPassword || "admin123";
     if (adminPasswordInput === requiredPassword) {
       setUserRole("admin");
       setShowLoginModal(false);
       setAdminPasswordInput("");
+      setFailedAttempts(0);
       showToast("Akses Superuser/Admin berhasil dibuka!", "success");
     } else {
-      showToast("Kata sandi Superuser tidak cocok.", "error");
+      const nextAttempts = failedAttempts + 1;
+      setFailedAttempts(nextAttempts);
+      if (nextAttempts >= 5) {
+        const cooldownTime = 300;
+        const cooldownUntil = Date.now() + cooldownTime * 1000;
+        sessionStorage.setItem("admin_login_cooldown_until", String(cooldownUntil));
+        setCooldownSeconds(cooldownTime);
+        setAdminPasswordInput("");
+        showToast("Terlalu banyak percobaan salah! Akses terkunci selama 5 menit.", "error");
+      } else {
+        showToast(`Kata sandi salah. Percobaan gagal: ${nextAttempts}/5`, "error");
+      }
     }
   };
 
@@ -375,7 +528,7 @@ export function useBumdesState() {
       amount: formCash.amount,
       description: finalDesc
     };
-    setCashTransactions([...cashTransactions, newTx]);
+    setCashTransactions(recalculateLedgerHashes([...cashTransactions, newTx]));
     setShowAddCashModal(false);
     setFormCash({
       date: new Date().toISOString().split("T")[0],
@@ -395,6 +548,10 @@ export function useBumdesState() {
 
   const handleUpdateCashTransaction = (e: React.FormEvent) => {
     e.preventDefault();
+    if (userRole !== "admin") {
+      showToast("Akses Ditolak: Fitur mengoreksi transaksi kas hanya tersedia untuk Superuser/Admin!", "error");
+      return;
+    }
     if (!editingCash) return;
     if (editingCash.amount <= 0) {
       showToast("Jumlah nominal transaksi harus lebih besar dari Rp 0.", "warning");
@@ -404,15 +561,19 @@ export function useBumdesState() {
       showToast("Harap berikan keterangan transaksi kas.", "warning");
       return;
     }
-    setCashTransactions(prev => prev.map(t => t.id === editingCash.id ? editingCash : t));
+    setCashTransactions(prev => recalculateLedgerHashes(prev.map(t => t.id === editingCash.id ? editingCash : t)));
     setShowEditCashModal(false);
     setEditingCash(null);
     showToast("Transaksi kas berhasil dikoreksi!", "success");
   };
 
   const handleDeleteCashTransaction = (id: string) => {
+    if (userRole !== "admin") {
+      showToast("Akses Ditolak: Fitur menghapus transaksi kas hanya tersedia untuk Superuser/Admin!", "error");
+      return;
+    }
     if (!window.confirm("Hapus transaksi kas ini? Tindakan tidak dapat dibatalkan.")) return;
-    setCashTransactions(prev => prev.filter(t => t.id !== id));
+    setCashTransactions(prev => recalculateLedgerHashes(prev.filter(t => t.id !== id)));
   };
 
   // ── Citizens ─────────────────────────────────────────────────────────────────
@@ -448,6 +609,10 @@ export function useBumdesState() {
 
   const handleUpdateCitizen = (e: React.FormEvent) => {
     e.preventDefault();
+    if (userRole !== "admin") {
+      showToast("Akses Ditolak: Fitur mengedit profil warga hanya tersedia untuk Superuser/Admin!", "error");
+      return;
+    }
     if (!editingCitizen) return;
     if (!editingCitizen.name.trim()) {
       showToast("Nama warga wajib diisi.", "warning");
@@ -473,6 +638,10 @@ export function useBumdesState() {
   };
 
   const handleDeleteCitizen = (id: string) => {
+    if (userRole !== "admin") {
+      showToast("Akses Ditolak: Fitur menghapus data warga hanya tersedia untuk Superuser/Admin!", "error");
+      return;
+    }
     const hasLoan = loans.some(l => l.citizenId === id && l.amountPaidPrincipal < l.amount);
     if (hasLoan) {
       showToast("Warga ini masih memiliki pinjaman aktif yang belum lunas. Lunaskan kredit terlebih dahulu.", "error");
@@ -555,7 +724,7 @@ export function useBumdesState() {
     };
     setSavingAccounts(updatedAccounts);
     setSavingTransactions([...savingTransactions, newSavingTx]);
-    setCashTransactions([...cashTransactions, newGeneralTx]);
+    setCashTransactions(recalculateLedgerHashes([...cashTransactions, newGeneralTx]));
     setShowSavingActionModal(false);
     setFormSavingAction({ citizenId: "", savingType: "Sukarela", type: "setor", amount: 0, description: "" });
     setLastCompletedTx({
@@ -629,7 +798,7 @@ export function useBumdesState() {
       referenceId: newLoan.id
     };
     setLoans([...loans, newLoan]);
-    setCashTransactions([...cashTransactions, newGeneralTx]);
+    setCashTransactions(recalculateLedgerHashes([...cashTransactions, newGeneralTx]));
     setShowNewLoanModal(false);
     setFormLoan({
       citizenId: "",
@@ -648,6 +817,10 @@ export function useBumdesState() {
 
   const handleUpdateLoan = (e: React.FormEvent) => {
     e.preventDefault();
+    if (userRole !== "admin") {
+      showToast("Akses Ditolak: Fitur mengedit parameter kredit hanya tersedia untuk Superuser/Admin!", "error");
+      return;
+    }
     if (!editingLoan) return;
     if (editingLoan.amount <= 0) {
       showToast("Pokok pinjaman harus lebih besar dari Rp 0.", "warning");
@@ -662,6 +835,10 @@ export function useBumdesState() {
   };
 
   const handleDeleteLoan = (loanId: string) => {
+    if (userRole !== "admin") {
+      showToast("Akses Ditolak: Fitur menghapus rekening kredit hanya tersedia untuk Superuser/Admin!", "error");
+      return;
+    }
     if (!window.confirm("Hapus data pinjaman ini beserta seluruh riwayat angsurannya? Tindakan tidak dapat dibatalkan.")) return;
     
     // Find related repayment IDs for this loan
@@ -671,9 +848,9 @@ export function useBumdesState() {
     
     setLoans(prev => prev.filter(l => l.id !== loanId));
     setLoanRepayments(prev => prev.filter(r => r.loanId !== loanId));
-    setCashTransactions(prev => prev.filter(t => 
+    setCashTransactions(prev => recalculateLedgerHashes(prev.filter(t => 
       t.referenceId !== loanId && !relatedRepaymentIds.has(t.referenceId || "")
-    ));
+    )));
     showToast("Catatan kredit dan seluruh mutasi angsuran terkait berhasil dibersihkan dari Buku Kas Umum.", "success");
   };
 
@@ -734,7 +911,7 @@ export function useBumdesState() {
 
     setLoans(updatedLoans);
     setLoanRepayments([...loanRepayments, newRepayment]);
-    setCashTransactions([...cashTransactions, newGeneralTx]);
+    setCashTransactions(recalculateLedgerHashes([...cashTransactions, newGeneralTx]));
     setShowRepaymentModal(false);
     setFormRepayment({ loanId: "", principalPaid: 0, interestPaid: 0, finePaid: 0, description: "" });
     setLastCompletedTx({
@@ -774,8 +951,22 @@ export function useBumdesState() {
       loanRepayments,
       cashTransactions
     };
+    const password = config.adminPassword || "admin123";
+    const jsonStr = JSON.stringify(snapshot);
+    const encrypted = encryptData(jsonStr, password);
+
+    const blob = new Blob([encrypted], { type: "application/json;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
     const date = new Date().toISOString().split("T")[0];
-    exportToJSON(snapshot, `BUMDes_Backup_${date}`);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `BUMDes_Encrypted_Backup_${date}.json`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast("Berkas cadangan terenkripsi berhasil diunduh!", "success");
   };
 
   const restoreFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -790,27 +981,40 @@ export function useBumdesState() {
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
-        const data = JSON.parse(ev.target?.result as string);
-        if (!data.version || !data.config || !data.citizens) {
+        const fileContent = ev.target?.result as string;
+        let parsedData: any;
+        
+        try {
+          parsedData = JSON.parse(fileContent);
+        } catch (jsonErr) {
+          const password = config.adminPassword || "admin123";
+          const decrypted = decryptData(fileContent, password);
+          parsedData = JSON.parse(decrypted);
+        }
+
+        if (!parsedData.version || !parsedData.config || !parsedData.citizens) {
           showToast("File backup tidak valid atau formatnya salah.", "error");
           return;
         }
-        if (!window.confirm(`Restore data dari backup tanggal ${data.exportedAt?.split("T")[0] || "tidak diketahui"}?\n\nSEMUA data saat ini akan diganti. Tindakan ini tidak dapat dibatalkan.`)) return;
-        setConfig({ ...initialBUMDesConfig, ...data.config });
-        setCitizens(data.citizens || []);
-        setSavingAccounts(data.savingAccounts || []);
-        setSavingTransactions(data.savingTransactions || []);
-        setLoans(data.loans || []);
-        setLoanRepayments(data.loanRepayments || []);
-        setCashTransactions(data.cashTransactions || []);
-        showToast("Data BUMDes berhasil dipulihkan dari file backup!", "success");
+        if (!window.confirm(`Restore data dari backup tanggal ${parsedData.exportedAt?.split("T")[0] || "tidak diketahui"}?\n\nSEMUA data saat ini akan diganti. Tindakan ini tidak dapat dibatalkan.`)) return;
+        
+        setConfig({ ...initialBUMDesConfig, ...parsedData.config });
+        setCitizens(parsedData.citizens || []);
+        setSavingAccounts(parsedData.savingAccounts || []);
+        setSavingTransactions(parsedData.savingTransactions || []);
+        setLoans(parsedData.loans || []);
+        setLoanRepayments(parsedData.loanRepayments || []);
+        
+        const restoredTxs = recalculateLedgerHashes(parsedData.cashTransactions || []);
+        setCashTransactions(restoredTxs);
+        
+        showToast("Data BUMDes berhasil dipulihkan dari berkas cadangan!", "success");
       } catch (err) {
         console.error("Restore failed:", err);
-        showToast("Gagal membaca file backup. Pastikan file tidak rusak.", "error");
+        showToast("Gagal mendekripsi atau membaca file backup. Pastikan kata sandi admin cocok.", "error");
       }
     };
     reader.readAsText(file);
-    // Reset input so the same file can be re-selected
     e.target.value = "";
   };
 
@@ -839,12 +1043,14 @@ export function useBumdesState() {
       });
     }
     
+    const chainedCapOnly = recalculateLedgerHashes(initialCapTxOnly);
+    
     setCitizens([]);
     setSavingAccounts([]);
     setSavingTransactions([]);
     setLoans([]);
     setLoanRepayments([]);
-    setCashTransactions(initialCapTxOnly);
+    setCashTransactions(chainedCapOnly);
     
     localStorage.setItem("bumdes_cash_txs", JSON.stringify(initialCapTxOnly));
     
@@ -1053,6 +1259,7 @@ export function useBumdesState() {
     userRole, setUserRole,
     showLoginModal, setShowLoginModal,
     adminPasswordInput, setAdminPasswordInput,
-    handleAdminLogin, handleAdminLogout
+    handleAdminLogin, handleAdminLogout,
+    isLedgerCorrupted, cooldownSeconds
   };
 }

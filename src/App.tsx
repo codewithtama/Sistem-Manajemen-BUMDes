@@ -77,6 +77,7 @@ export default function App() {
                   onNavigate={(tab) => state.setActiveTab(tab)}
                   sisaHasilUsaha={state.sisaHasilUsaha}
                   citizens={state.citizens}
+                  isLedgerCorrupted={state.isLedgerCorrupted}
                 />
               </div>
             )}
@@ -127,6 +128,7 @@ export default function App() {
                   onEditLoan={state.handleOpenEditLoan}
                   onDeleteLoan={state.handleDeleteLoan}
                   onOpenAmortization={state.handleOpenAmortization}
+                  userRole={state.userRole}
                 />
               </div>
             )}
@@ -140,6 +142,7 @@ export default function App() {
                   setShowAddCitizenModal={state.setShowAddCitizenModal}
                   onEditCitizen={state.handleOpenEditCitizen}
                   onDeleteCitizen={state.handleDeleteCitizen}
+                  userRole={state.userRole}
                 />
               </div>
             )}
@@ -258,6 +261,7 @@ export default function App() {
         adminPasswordInput={state.adminPasswordInput}
         setAdminPasswordInput={state.setAdminPasswordInput}
         handleAdminLogin={state.handleAdminLogin}
+        cooldownSeconds={state.cooldownSeconds}
       />
 
       {/* Toast Notification overlay */}

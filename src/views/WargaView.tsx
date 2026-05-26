@@ -10,6 +10,7 @@ interface WargaViewProps {
   setShowAddCitizenModal: (show: boolean) => void;
   onEditCitizen: (citizen: Citizen) => void;
   onDeleteCitizen: (id: string) => void;
+  userRole: "operator" | "admin";
 }
 
 function avatarInitials(name: string): string {
@@ -24,7 +25,7 @@ const avatarColors = [
   "bg-indigo-500", "bg-rose-500", "bg-teal-500", "bg-orange-500",
 ];
 
-export default function WargaView({ citizens, citizenSearch, setCitizenSearch, setShowAddCitizenModal, onEditCitizen, onDeleteCitizen }: WargaViewProps) {
+export default function WargaView({ citizens, citizenSearch, setCitizenSearch, setShowAddCitizenModal, onEditCitizen, onDeleteCitizen, userRole }: WargaViewProps) {
   const filtered = [...citizens]
     .sort((a, b) => b.joinedAt.localeCompare(a.joinedAt) || b.id.localeCompare(a.id))
     .filter(c =>
@@ -142,22 +143,26 @@ export default function WargaView({ citizens, citizenSearch, setCitizenSearch, s
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => onEditCitizen(cit)}
-                        className="p-1.5 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition cursor-pointer"
-                        title="Edit Profil Warga"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => onDeleteCitizen(cit.id)}
-                        className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition cursor-pointer"
-                        title="Hapus Data Warga"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    {userRole === "admin" ? (
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => onEditCitizen(cit)}
+                          className="p-1.5 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition cursor-pointer"
+                          title="Edit Profil Warga"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => onDeleteCitizen(cit.id)}
+                          className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                          title="Hapus Data Warga"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-slate-400 text-xs font-medium">—</span>
+                    )}
                   </td>
                 </tr>
               ))}

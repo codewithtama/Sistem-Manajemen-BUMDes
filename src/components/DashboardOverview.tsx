@@ -15,11 +15,12 @@ interface DashboardOverviewProps {
   onNavigate: (tab: string) => void;
   sisaHasilUsaha: number;
   citizens: { id: string; nik: string }[];
+  isLedgerCorrupted: boolean;
 }
 
 export default function DashboardOverview({
   cashTransactions, savingAccounts, loans, villageName, bumdesName, onNavigate,
-  sisaHasilUsaha, citizens,
+  sisaHasilUsaha, citizens, isLedgerCorrupted,
 }: DashboardOverviewProps) {
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
 
@@ -228,6 +229,21 @@ export default function DashboardOverview({
 
   return (
     <div className="space-y-6">
+      {/* Integrity Hazard Warning Panel */}
+      {isLedgerCorrupted && (
+        <div className="relative overflow-hidden bg-gradient-to-br from-rose-600 to-rose-700 border border-rose-500 text-white p-5 rounded-2xl shadow-xl shadow-rose-950/20 flex items-start gap-4 animate-modal-in">
+          <div className="p-3 bg-white/10 rounded-xl shrink-0">
+            <AlertTriangle className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h4 className="font-extrabold text-sm tracking-tight uppercase">⚠ PERINGATAN INTEGRITAS: Terdeteksi Manipulasi Kas Ilegal pada Database BUMDes!</h4>
+            <p className="text-xs text-rose-100/90 leading-relaxed mt-1">
+              Sistem mendeteksi bahwa rantai tanda tangan kriptografis Buku Kas Umum (BKU) terputus atau telah diubah secara manual di luar aplikasi (misalnya pengeditan langsung di berkas JSON server). Integritas audit keuangan desa ditangguhkan keamanannya demi melindungi penyalahgunaan anggaran. Harap segera lakukan pemeriksaan transaksi fisik Buku Kas!
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Page header */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>

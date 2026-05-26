@@ -219,13 +219,13 @@ export default function BukuKasView({
                       {tx.type === "keluar" ? formatRupiah(tx.amount) : "—"}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      {isSystemGenerated && userRole !== "admin" ? (
+                      {userRole !== "admin" ? (
                         <span
                           className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold text-slate-400 bg-slate-50 rounded-lg border border-slate-200"
-                          title="Transaksi otomatis terkunci (Hanya Superuser yang dapat mengubah)"
+                          title={isSystemGenerated ? "Transaksi otomatis terkunci (Hanya Superuser yang dapat mengubah)" : "Transaksi terkunci (Hanya Superuser yang dapat mengubah)"}
                         >
                           <Lock className="w-3 h-3 text-slate-400" />
-                          Sistem
+                          {isSystemGenerated ? "Sistem" : "Terkunci"}
                         </span>
                       ) : (
                         <div className="flex justify-end gap-1.5">

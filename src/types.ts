@@ -6,6 +6,7 @@ export interface CashTransaction {
   amount: number;
   description: string;
   referenceId?: string; // Links to citizens, savings, or loans
+  hash?: string; // Cryptographic hash for ledger integrity chaining
 }
 
 export interface Citizen {

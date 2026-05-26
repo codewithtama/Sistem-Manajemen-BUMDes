@@ -145,7 +145,9 @@ interface ModalsProps {
   adminPasswordInput: string;
   setAdminPasswordInput: (p: string) => void;
   handleAdminLogin: (e: React.FormEvent) => void;
+  cooldownSeconds: number;
 }
+
 
 export default function Modals({
   showConfigModal, setShowConfigModal, formConfig, setFormConfig, handleUpdateConfig,
@@ -160,7 +162,7 @@ export default function Modals({
   showAmortizationModal, setShowAmortizationModal, amortizationLoan,
   showReceiptModal, setShowReceiptModal, lastCompletedTx,
   handleClearMockData,
-  showLoginModal, setShowLoginModal, adminPasswordInput, setAdminPasswordInput, handleAdminLogin,
+  showLoginModal, setShowLoginModal, adminPasswordInput, setAdminPasswordInput, handleAdminLogin, cooldownSeconds,
 }: ModalsProps) {
   return (
     <>
@@ -709,20 +711,31 @@ export default function Modals({
                   Masukkan kata sandi administratif untuk mengaktifkan privilese penuh (Full Privilege) edit/delete data sistem.
                 </p>
               </div>
+              {cooldownSeconds > 0 && (
+                <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl text-[11px] text-rose-700 font-medium leading-normal flex items-center gap-2">
+                  <span className="animate-pulse w-2 h-2 rounded-full bg-rose-600 shrink-0" />
+                  <span>
+                    Keamanan Terkunci: Terdeteksi percobaan login ilegal berulang. Silakan tunggu <strong>{cooldownSeconds} detik</strong> sebelum mencoba lagi.
+                  </span>
+                </div>
+              )}
               <Field label="Kata Sandi Superuser">
                 <input
                   type="password"
-                  placeholder="••••••••"
-                  className={inputCls + " font-mono"}
+                  placeholder={cooldownSeconds > 0 ? "SISTEM DIKUNCI" : "••••••••"}
+                  className={inputCls + " font-mono disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"}
                   value={adminPasswordInput}
                   onChange={e => setAdminPasswordInput(e.target.value)}
-                  autoFocus
+                  disabled={cooldownSeconds > 0}
+                  autoFocus={cooldownSeconds === 0}
                 />
               </Field>
               <div className="text-[10px] text-slate-400">
                 Sandi bawaan sistem: <span className="font-mono font-bold">admin123</span> (dapat diubah di menu parameter).
               </div>
-              <SubmitButton>Buka Akses Superuser</SubmitButton>
+              <SubmitButton disabled={cooldownSeconds > 0}>
+                {cooldownSeconds > 0 ? `Terkunci (${cooldownSeconds} detik)` : "Buka Akses Superuser"}
+              </SubmitButton>
             </form>
           </ModalPanel>
         </ModalWrapper>

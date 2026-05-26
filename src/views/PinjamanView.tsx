@@ -14,6 +14,7 @@ interface PinjamanViewProps {
   onEditLoan: (loan: Loan) => void;
   onDeleteLoan: (id: string) => void;
   onOpenAmortization: (loan: Loan) => void;
+  userRole: "operator" | "admin";
 }
 
 const statusCfg: Record<Loan["status"], { label: string; cls: string }> = {
@@ -26,7 +27,7 @@ const statusCfg: Record<Loan["status"], { label: string; cls: string }> = {
 export default function PinjamanView({
   loans, loanSearch, setLoanSearch, loanRepayments,
   setShowNewLoanModal, setShowRepaymentModal, setFormRepayment,
-  onEditLoan, onDeleteLoan, onOpenAmortization,
+  onEditLoan, onDeleteLoan, onOpenAmortization, userRole,
 }: PinjamanViewProps) {
   const filtered = [...loans]
     .sort((a, b) => b.dateDisbursed.localeCompare(a.dateDisbursed) || b.id.localeCompare(a.id))
@@ -248,20 +249,27 @@ export default function PinjamanView({
                             Angsur <ChevronRight className="w-3 h-3" />
                           </button>
                         )}
-                        <button
-                          onClick={() => onEditLoan(ln)}
-                          className="p-1.5 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition cursor-pointer"
-                          title="Edit Parameter Kredit"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => onDeleteLoan(ln.id)}
-                          className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition cursor-pointer"
-                          title="Hapus Rekening Kredit"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {userRole === "admin" && (
+                          <>
+                            <button
+                              onClick={() => onEditLoan(ln)}
+                              className="p-1.5 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition cursor-pointer"
+                              title="Edit Parameter Kredit"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => onDeleteLoan(ln.id)}
+                              className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                              title="Hapus Rekening Kredit"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
+                        {userRole !== "admin" && !outstanding && (
+                          <span className="text-slate-400 text-xs font-medium">—</span>
+                        )}
                       </div>
                     </td>
                   </tr>
