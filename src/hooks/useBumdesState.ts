@@ -226,6 +226,28 @@ export function useBumdesState() {
   // 1. Load from server on startup
   useEffect(() => {
     const loadServerDb = async () => {
+      // Force wipe browser local storage dummy data once to ensure a 100% fresh system
+      const isFresh = localStorage.getItem("bumdes_fresh_v2.2");
+      if (!isFresh) {
+        localStorage.removeItem("bumdes_config");
+        localStorage.removeItem("bumdes_citizens");
+        localStorage.removeItem("bumdes_saving_accounts");
+        localStorage.removeItem("bumdes_saving_txs");
+        localStorage.removeItem("bumdes_loans");
+        localStorage.removeItem("bumdes_repayments");
+        localStorage.removeItem("bumdes_cash_txs");
+        localStorage.setItem("bumdes_fresh_v2.2", "true");
+        
+        setConfig(initialBUMDesConfig);
+        setFormConfig(initialBUMDesConfig);
+        setCitizens([]);
+        setSavingAccounts([]);
+        setSavingTransactions([]);
+        setLoans([]);
+        setLoanRepayments([]);
+        setCashTransactions(initialCashTransactions);
+      }
+
       try {
         const response = await fetch("/api/db");
         if (response.ok) {
