@@ -15,6 +15,7 @@ import AdvisorView from "./views/AdvisorView";
 export default function App() {
   const state = useBumdesState();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showCreditModal, setShowCreditModal] = useState(false);
 
   return (
     <div id="bumdes_system" className="flex h-screen bg-slate-50 overflow-hidden font-sans antialiased">
@@ -78,6 +79,8 @@ export default function App() {
                   sisaHasilUsaha={state.sisaHasilUsaha}
                   citizens={state.citizens}
                   isLedgerCorrupted={state.isLedgerCorrupted}
+                  targetShu={state.config.targetShu}
+                  targetPades={state.config.targetPades}
                 />
               </div>
             )}
@@ -129,6 +132,7 @@ export default function App() {
                   onDeleteLoan={state.handleDeleteLoan}
                   onOpenAmortization={state.handleOpenAmortization}
                   userRole={state.userRole}
+                  onShowCreditCalc={() => setShowCreditModal(true)}
                 />
               </div>
             )}
@@ -168,6 +172,9 @@ export default function App() {
                   cashTransactions={state.cashTransactions}
                   savingAccounts={state.savingAccounts}
                   loans={state.loans}
+                  citizens={state.citizens}
+                  userRole={state.userRole}
+                  onDistributeDividends={state.handleDistributeDividends}
                 />
               </div>
             )}
@@ -262,6 +269,9 @@ export default function App() {
         setAdminPasswordInput={state.setAdminPasswordInput}
         handleAdminLogin={state.handleAdminLogin}
         cooldownSeconds={state.cooldownSeconds}
+        showCreditModal={showCreditModal}
+        setShowCreditModal={setShowCreditModal}
+        loanRepayments={state.loanRepayments}
       />
 
       {/* Toast Notification overlay */}

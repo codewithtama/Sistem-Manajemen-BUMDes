@@ -15,19 +15,20 @@ interface PinjamanViewProps {
   onDeleteLoan: (id: string) => void;
   onOpenAmortization: (loan: Loan) => void;
   userRole: "operator" | "admin";
+  onShowCreditCalc: () => void;
 }
 
 const statusCfg: Record<Loan["status"], { label: string; cls: string }> = {
-  Lancar:        { label: "Lancar",        cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  "Kurang Lancar": { label: "Kurang Lancar", cls: "bg-amber-50 text-amber-700 border-amber-200"    },
-  Diragukan:     { label: "Diragukan",     cls: "bg-orange-50 text-orange-700 border-orange-200"   },
-  Macet:         { label: "Macet",         cls: "bg-rose-50 text-rose-700 border-rose-200"          },
+  Lancar: { label: "Lancar", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  "Kurang Lancar": { label: "Kurang Lancar", cls: "bg-amber-50 text-amber-700 border-amber-200" },
+  Diragukan: { label: "Diragukan", cls: "bg-orange-50 text-orange-700 border-orange-200" },
+  Macet: { label: "Macet", cls: "bg-rose-50 text-rose-700 border-rose-200" },
 };
 
 export default function PinjamanView({
   loans, loanSearch, setLoanSearch, loanRepayments,
   setShowNewLoanModal, setShowRepaymentModal, setFormRepayment,
-  onEditLoan, onDeleteLoan, onOpenAmortization, userRole,
+  onEditLoan, onDeleteLoan, onOpenAmortization, userRole, onShowCreditCalc,
 }: PinjamanViewProps) {
   const filtered = [...loans]
     .sort((a, b) => b.dateDisbursed.localeCompare(a.dateDisbursed) || b.id.localeCompare(a.id))
@@ -62,9 +63,9 @@ export default function PinjamanView({
     exportToCSV("Riwayat_Angsuran_Pinjaman", headers, rows);
   };
 
-  const totalDisalurkan  = loans.reduce((s, l) => s + l.amount, 0);
+  const totalDisalurkan = loans.reduce((s, l) => s + l.amount, 0);
   const totalOutstanding = loans.reduce((s, l) => s + (l.amount - l.amountPaidPrincipal), 0);
-  const totalTerbayar    = loans.reduce((s, l) => s + l.amountPaidPrincipal, 0);
+  const totalTerbayar = loans.reduce((s, l) => s + l.amountPaidPrincipal, 0);
 
   return (
     <div id="view_pinjaman" className="space-y-6">
@@ -76,6 +77,13 @@ export default function PinjamanView({
           <p className="text-sm text-slate-500 mt-1">Kelola portofolio kredit dan angsuran warga desa secara terstruktur.</p>
         </div>
         <div className="flex gap-2 shrink-0">
+          <button
+            onClick={onShowCreditCalc}
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-xl shadow-sm transition cursor-pointer"
+          >
+            <HandCoins className="w-4 h-4 text-emerald-600 animate-pulse" />
+            Cek Kelayakan Kredit
+          </button>
           <button
             id="btn_repayment_loan"
             onClick={() => setShowRepaymentModal(true)}
@@ -167,7 +175,7 @@ export default function PinjamanView({
               {filtered.map(ln => {
                 const outstanding = Math.max(0, ln.amount - ln.amountPaidPrincipal);
                 const pct = ln.amount > 0 ? Math.min(100, (ln.amountPaidPrincipal / ln.amount) * 100) : 0;
-                
+
                 // Dynamic days overdue
                 let daysOverdue = 0;
                 if (outstanding > 0) {
@@ -202,8 +210,8 @@ export default function PinjamanView({
                       <div className="flex flex-col">
                         <span className={`inline-flex items-center w-fit px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${statusCfg[ln.status]?.cls}`} title={
                           ln.status === "Lancar" ? "Pembayaran tepat waktu / keterlambatan ≤ 30 hari" :
-                          ln.status === "Kurang Lancar" ? "Keterlambatan 31 - 90 hari" :
-                          ln.status === "Diragukan" ? "Keterlambatan 91 - 180 hari" : "Keterlambatan kritis > 180 hari"
+                            ln.status === "Kurang Lancar" ? "Keterlambatan 31 - 90 hari" :
+                              ln.status === "Diragukan" ? "Keterlambatan 91 - 180 hari" : "Keterlambatan kritis > 180 hari"
                         }>
                           {statusCfg[ln.status]?.label}
                         </span>
@@ -297,19 +305,19 @@ export default function PinjamanView({
             .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id))
             .slice(0, 6)
             .map(rep => (
-            <div key={rep.id} className="flex items-center gap-3 py-2 border-b border-slate-50 last:border-0">
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                <CheckCircle className="w-4 h-4" />
+              <div key={rep.id} className="flex items-center gap-3 py-2 border-b border-slate-50 last:border-0">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                  <CheckCircle className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-slate-800">{rep.citizenName}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5 font-mono">{rep.date} · Pokok: {formatRupiah(rep.principalPaid)} · Jasa: {formatRupiah(rep.interestPaid)}</p>
+                </div>
+                <span className="text-sm font-bold font-mono text-emerald-600">
+                  +{formatRupiah(rep.principalPaid + rep.interestPaid + rep.finePaid)}
+                </span>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-slate-800">{rep.citizenName}</p>
-                <p className="text-[10px] text-slate-400 mt-0.5 font-mono">{rep.date} · Pokok: {formatRupiah(rep.principalPaid)} · Jasa: {formatRupiah(rep.interestPaid)}</p>
-              </div>
-              <span className="text-sm font-bold font-mono text-emerald-600">
-                +{formatRupiah(rep.principalPaid + rep.interestPaid + rep.finePaid)}
-              </span>
-            </div>
-          ))}
+            ))}
         </div>
       </div>
     </div>

@@ -84,6 +84,12 @@ export function useBumdesState() {
         if (parsed.adminPassword === undefined) {
           parsed.adminPassword = "admin123";
         }
+        if (parsed.targetShu === undefined) {
+          parsed.targetShu = initialBUMDesConfig.targetShu || 50000000;
+        }
+        if (parsed.targetPades === undefined) {
+          parsed.targetPades = initialBUMDesConfig.targetPades || 20000000;
+        }
         return parsed;
       }
       return { ...initialBUMDesConfig, adminPassword: "admin123" };
@@ -1173,6 +1179,87 @@ export function useBumdesState() {
 
   const triggerPrintLPJ = () => { window.print(); };
 
+  const handleDistributeDividends = () => {
+    if (userRole !== "admin") {
+      showToast("Akses Ditolak: Hanya Superuser yang dapat membagikan dividen SHU warga!", "error");
+      return;
+    }
+    if (sisaHasilUsaha <= 0) {
+      showToast("Gagal: Sisa Hasil Usaha (SHU) bernilai nol atau negatif.", "error");
+      return;
+    }
+    if (citizens.length === 0) {
+      showToast("Gagal: Belum ada data warga terdaftar.", "error");
+      return;
+    }
+
+    const totalBonusPool = alokasiBonusWarga;
+    const basePool = Math.round(totalBonusPool * 0.5);
+    const proportionalPool = Math.round(totalBonusPool * 0.5);
+
+    const baseSharePerCitizen = Math.round(basePool / citizens.length);
+    const totalSavings = savingAccounts.reduce((sum, a) => sum + a.balance, 0);
+
+    let updatedAccounts = [...savingAccounts];
+    const newSavingTxs: SavingTransaction[] = [];
+    const dateToday = new Date().toISOString().split("T")[0];
+
+    citizens.forEach(citizen => {
+      const citizenAccounts = savingAccounts.filter(a => a.citizenId === citizen.id);
+      const citizenSavingSum = citizenAccounts.reduce((sum, a) => sum + a.balance, 0);
+      
+      const baseAmount = baseSharePerCitizen;
+      const proportionalAmount = totalSavings > 0 
+        ? Math.round((citizenSavingSum / totalSavings) * proportionalPool)
+        : 0;
+      
+      const totalDividend = baseAmount + proportionalAmount;
+      if (totalDividend <= 0) return;
+
+      let sukarelaAcc = updatedAccounts.find(a => a.citizenId === citizen.id && a.savingType === "Sukarela");
+      if (!sukarelaAcc) {
+        sukarelaAcc = {
+          id: "sa-div-" + Date.now() + Math.random().toString().slice(-4),
+          citizenId: citizen.id,
+          citizenName: citizen.name,
+          savingType: "Sukarela",
+          balance: 0,
+          lastUpdated: dateToday
+        };
+        updatedAccounts.push(sukarelaAcc);
+      }
+
+      const newBalance = sukarelaAcc.balance + totalDividend;
+      updatedAccounts = updatedAccounts.map(a => 
+        a.id === sukarelaAcc!.id ? { ...a, balance: newBalance, lastUpdated: dateToday } : a
+      );
+
+      newSavingTxs.push({
+        id: "st-div-" + Date.now() + Math.random().toString().slice(-4),
+        savingAccountId: sukarelaAcc.id,
+        citizenName: citizen.name,
+        date: dateToday,
+        type: "setor",
+        amount: totalDividend,
+        description: `Bagi Hasil Dividen SHU BUMDes 2026 (Coop Base + Prop Simpanan)`
+      });
+    });
+
+    const newGeneralTx: CashTransaction = {
+      id: "tx-div-" + Date.now(),
+      date: dateToday,
+      type: "keluar",
+      category: "Lain-lain",
+      amount: totalBonusPool,
+      description: `Penyaluran Bonus Dividen SHU BUMDes kepada ${citizens.length} warga desa (10% surplus)`
+    };
+
+    setSavingAccounts(updatedAccounts);
+    setSavingTransactions([...savingTransactions, ...newSavingTxs]);
+    setCashTransactions(recalculateLedgerHashes([...cashTransactions, newGeneralTx]));
+    showToast(`Berhasil mencairkan dividen BUMDes sebesar ${formatRupiah(totalBonusPool)} kepada ${citizens.length} warga desa!`, "success");
+  };
+
   return {
     activeTab, setActiveTab,
     config, setConfig,
@@ -1245,6 +1332,7 @@ export function useBumdesState() {
     handleSendAiMessage,
     handleGenerateAuditReport,
     triggerPrintLPJ,
+    handleDistributeDividends,
 
     totalBkuMasuk, totalBkuKeluar, currentGeneralCash,
     totalInterestsEarned, totalFinesEarned, totalFeeRevenue,

@@ -10,6 +10,8 @@ export const initialBUMDesConfig: BUMDesConfig = {
   initialCapitalAmount: 150000000, // Rp 150.000.000,- penyertaan modal desa awal
   customInterestRate: 1, // 1% jasa administratif per bulan sesuai mufakat
   finePercentagePerDay: 0.1, // 0.1% dari sisa pokok per hari keterlambatan
+  targetShu: 50000000, // Rp 50.000.000,- Target SHU tahunan
+  targetPades: 20000000, // Rp 20.000.000,- Target Pendapatan Asli Desa (40% SHU)
 };
 
 export const initialCitizens: Citizen[] = [];

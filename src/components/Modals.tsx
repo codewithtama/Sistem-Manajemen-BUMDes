@@ -146,6 +146,11 @@ interface ModalsProps {
   setAdminPasswordInput: (p: string) => void;
   handleAdminLogin: (e: React.FormEvent) => void;
   cooldownSeconds: number;
+
+  // ── Credit Calculator Props ──
+  showCreditModal: boolean;
+  setShowCreditModal: (s: boolean) => void;
+  loanRepayments: LoanRepayment[];
 }
 
 
@@ -163,7 +168,9 @@ export default function Modals({
   showReceiptModal, setShowReceiptModal, lastCompletedTx,
   handleClearMockData,
   showLoginModal, setShowLoginModal, adminPasswordInput, setAdminPasswordInput, handleAdminLogin, cooldownSeconds,
+  showCreditModal, setShowCreditModal, loanRepayments,
 }: ModalsProps) {
+  const [selectedCalcCitiId, setSelectedCalcCitiId] = React.useState("");
   return (
     <>
       {/* 1. Config */}
@@ -195,6 +202,12 @@ export default function Modals({
                 </Field>
                 <Field label="Kata Sandi Superuser">
                   <input type="text" className={inputCls + " font-mono"} value={formConfig.adminPassword || "admin123"} onChange={e => setFormConfig({ ...formConfig, adminPassword: e.target.value })} />
+                </Field>
+                <Field label="Target SHU Tahunan (Rp)">
+                  <input type="text" className={inputCls + " font-mono"} value={formatIndoNumber(formConfig.targetShu || 0)} onChange={e => setFormConfig({ ...formConfig, targetShu: parseIndoNumber(e.target.value) })} />
+                </Field>
+                <Field label="Target PADesa Tahunan (Rp)">
+                  <input type="text" className={inputCls + " font-mono"} value={formatIndoNumber(formConfig.targetPades || 0)} onChange={e => setFormConfig({ ...formConfig, targetPades: parseIndoNumber(e.target.value) })} />
                 </Field>
               </div>
               <Field label="Kunci API Gemini (Opsional — untuk asisten kecerdasan buatan)">
@@ -738,6 +751,189 @@ export default function Modals({
               </SubmitButton>
             </form>
           </ModalPanel>
+        </ModalWrapper>
+      )}
+
+      {/* 13. Kalkulator Kelayakan Kredit Warga */}
+      {showCreditModal && (
+        <ModalWrapper onClose={() => setShowCreditModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden font-sans">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-900 text-white">
+              <div>
+                <h3 className="font-bold text-sm">Analisis Kelayakan Kredit & Skor OJK</h3>
+                <p className="text-[10px] text-slate-400 mt-0.5">Sistem scoring otomatis Simpan Pinjam BUMDes</p>
+              </div>
+              <button
+                onClick={() => setShowCreditModal(false)}
+                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            
+            {/* Modal Body */}
+            <div className="p-6 space-y-4">
+              <Field label="Pilih Warga Desa">
+                <select
+                  className={selectCls}
+                  value={selectedCalcCitiId}
+                  onChange={e => setSelectedCalcCitiId(e.target.value)}
+                >
+                  <option value="">— Pilih Warga —</option>
+                  {citizens.map(c => <option key={c.id} value={c.id}>{c.name} ({c.nik})</option>)}
+                </select>
+              </Field>
+
+              {(() => {
+                if (!selectedCalcCitiId) {
+                  return (
+                    <div className="text-center py-8 text-slate-400 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+                      <Landmark className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                      <p className="text-xs">Silakan pilih warga desa di atas untuk memproses kalkulasi kredit otomatis.</p>
+                    </div>
+                  );
+                }
+
+                const citizen = citizens.find(c => c.id === selectedCalcCitiId);
+                if (!citizen) return null;
+
+                const citAccs = savingAccounts.filter(a => a.citizenId === citizen.id);
+                const totalSavings = citAccs.reduce((sum, a) => sum + a.balance, 0);
+
+                const citLoans = loans.filter(l => l.citizenId === citizen.id);
+                const activeLoan = citLoans.find(l => l.amountPaidPrincipal < l.amount);
+                
+                const historicalRepaymentsCount = citLoans.reduce((sum, l) => {
+                  return sum + (loanRepayments?.filter(r => r.loanId === l.id).length || 0);
+                }, 0);
+                const hasOverdueOrBadRecord = citLoans.some(l => l.status === "Macet" || l.status === "Diragukan" || l.status === "Kurang Lancar");
+
+                let creditScore = 70;
+                if (totalSavings > 1000000) creditScore += 10;
+                if (totalSavings > 5000000) creditScore += 10;
+                if (historicalRepaymentsCount > 5) creditScore += 10;
+                if (hasOverdueOrBadRecord) creditScore -= 30;
+                if (activeLoan) creditScore -= 40;
+
+                creditScore = Math.max(0, Math.min(100, creditScore));
+
+                let ratingLabel = "A - Layak (Kredit Standar)";
+                let ratingBg = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                let ratingColor = "text-emerald-600";
+                let maxLimit = 2000000;
+                let recommendedInterest = 1.2;
+
+                if (activeLoan) {
+                  ratingLabel = "C - Berisiko (Ada Kredit Aktif)";
+                  ratingBg = "bg-rose-50 text-rose-700 border-rose-200";
+                  ratingColor = "text-rose-600";
+                  maxLimit = 0;
+                  recommendedInterest = 0;
+                } else if (creditScore >= 90) {
+                  ratingLabel = "AAA - Sangat Layak (Prima)";
+                  ratingBg = "bg-indigo-50 text-indigo-700 border-indigo-200";
+                  ratingColor = "text-indigo-600";
+                  maxLimit = Math.max(5000000, Math.min(20000000, totalSavings * 5));
+                  recommendedInterest = 0.9;
+                } else if (creditScore >= 80) {
+                  ratingLabel = "AA - Sangat Layak";
+                  ratingBg = "bg-teal-50 text-teal-700 border-teal-200";
+                  ratingColor = "text-teal-600";
+                  maxLimit = Math.max(3000000, Math.min(15000000, totalSavings * 4));
+                  recommendedInterest = 1.0;
+                } else if (creditScore >= 60) {
+                  ratingLabel = "A - Layak";
+                  ratingBg = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                  ratingColor = "text-emerald-600";
+                  maxLimit = Math.max(2000000, Math.min(10000000, totalSavings * 3));
+                  recommendedInterest = 1.1;
+                } else {
+                  ratingLabel = "B - Berisiko Tinggi (Kurang Layak)";
+                  ratingBg = "bg-amber-50 text-amber-700 border-amber-200";
+                  ratingColor = "text-amber-600";
+                  maxLimit = 1000000;
+                  recommendedInterest = 1.3;
+                }
+
+                return (
+                  <div className="space-y-4 animate-scale-up border-t border-slate-100 pt-4">
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-xs font-semibold text-slate-500">
+                        <span>Skor Kelayakan Kredit</span>
+                        <span className={ratingColor + " font-bold"}>{creditScore} / 100</span>
+                      </div>
+                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-500 ${
+                            creditScore >= 80 ? "bg-indigo-500" :
+                            creditScore >= 60 ? "bg-emerald-500" :
+                            "bg-rose-500"
+                          }`}
+                          style={{ width: `${creditScore}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 text-xs font-mono">
+                      <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                        <span className="text-[9px] text-slate-400 block uppercase tracking-wider mb-0.5">Rating Keuangan</span>
+                        <span className={`font-bold inline-block px-2 py-0.5 rounded border mt-1 text-[10px] ${ratingBg}`}>
+                          {ratingLabel}
+                        </span>
+                      </div>
+                      <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                        <span className="text-[9px] text-slate-400 block uppercase tracking-wider mb-0.5">Simpanan Aktif</span>
+                        <span className="font-bold text-slate-800 block text-xs mt-1.5">{formatRupiah(totalSavings)}</span>
+                      </div>
+                      <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                        <span className="text-[9px] text-slate-400 block uppercase tracking-wider mb-0.5">Rekomendasi Bunga</span>
+                        <span className="font-bold text-slate-800 block text-xs mt-1.5">
+                          {recommendedInterest > 0 ? `${recommendedInterest}% / Bln` : "—"}
+                        </span>
+                      </div>
+                      <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                        <span className="text-[9px] text-slate-400 block uppercase tracking-wider mb-0.5">Batas Plafon Kredit</span>
+                        <span className="font-bold text-emerald-600 block text-xs mt-1.5">
+                          {maxLimit > 0 ? formatRupiah(maxLimit) : "TIDAK DIIJINKAN"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-2 text-[10px] font-mono text-slate-500">
+                      <span className="text-[9px] text-slate-400 uppercase tracking-widest font-bold block mb-1">Rincian Variabel Resiko</span>
+                      <div className="flex justify-between">
+                        <span>• Status Kredit Berjalan:</span>
+                        <span className={activeLoan ? "text-rose-500 font-bold" : "text-emerald-600 font-bold"}>
+                          {activeLoan ? "Ada Kredit Aktif (Tolak)" : "Bersih / Tidak Ada"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>• Saldo Jaminan Simpanan:</span>
+                        <span className={totalSavings >= 1000000 ? "text-emerald-600 font-bold" : "text-amber-500 font-bold"}>
+                          {totalSavings >= 1000000 ? "Memadai" : "Rendah"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>• Riwayat Kedisiplinan Kas:</span>
+                        <span className={hasOverdueOrBadRecord ? "text-rose-500 font-bold" : "text-emerald-600 font-bold"}>
+                          {hasOverdueOrBadRecord ? "Terhambat / Buruk" : "Lancar / Baru"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+            
+            <div className="bg-slate-50 border-t border-slate-100 px-6 py-4 flex justify-end">
+              <button
+                onClick={() => setShowCreditModal(false)}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold cursor-pointer transition"
+              >
+                Selesai
+              </button>
+            </div>
+          </div>
         </ModalWrapper>
       )}
     </>

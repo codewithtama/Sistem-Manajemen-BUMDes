@@ -76,4 +76,7 @@ export interface BUMDesConfig {
   finePercentagePerDay: number; // Late payment fine: % of outstanding principal per day overdue
   geminiApiKey?: string; // Custom API key for Gemini AI assistant
   adminPassword?: string; // Admin password (default: admin123)
+  targetShu?: number; // Target annual net profit (SHU)
+  targetPades?: number; // Target annual village contribution (PADesa)
 }
+

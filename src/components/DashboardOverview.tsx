@@ -16,11 +16,13 @@ interface DashboardOverviewProps {
   sisaHasilUsaha: number;
   citizens: { id: string; nik: string }[];
   isLedgerCorrupted: boolean;
+  targetShu?: number;
+  targetPades?: number;
 }
 
 export default function DashboardOverview({
   cashTransactions, savingAccounts, loans, villageName, bumdesName, onNavigate,
-  sisaHasilUsaha, citizens, isLedgerCorrupted,
+  sisaHasilUsaha, citizens, isLedgerCorrupted, targetShu, targetPades,
 }: DashboardOverviewProps) {
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
 
@@ -338,6 +340,63 @@ export default function DashboardOverview({
           );
         })}
       </div>
+
+      {/* ── SECTION: TARGET ANGGARAN & CAPAIAN DESA ── */}
+      {(() => {
+        const annualShuTarget = targetShu || 50000000;
+        const annualPadesTarget = targetPades || 20000000;
+        const shuProgress = Math.max(0, Math.min(100, (sisaHasilUsaha / annualShuTarget) * 100));
+        const padesContribution = sisaHasilUsaha > 0 ? Math.round(sisaHasilUsaha * 0.4) : 0;
+        const padesProgress = Math.max(0, Math.min(100, (padesContribution / annualPadesTarget) * 100));
+
+        return (
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
+            <div>
+              <h3 className="font-semibold text-slate-900 text-sm">Pemantauan Target Anggaran Pendapatan Desa (PADesa)</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Progres realtime kontribusi surplus BUMDes terhadap anggaran mandiri Pendapatan Asli Desa.</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Target 1: SHU Target */}
+              <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl space-y-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Target SHU Tahunan BUMDes</span>
+                    <span className="text-sm font-bold text-slate-800 font-mono block mt-1">{formatRupiah(sisaHasilUsaha)} / {formatRupiah(annualShuTarget)}</span>
+                  </div>
+                  <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-lg px-2 py-0.5 font-mono">{shuProgress.toFixed(1)}%</span>
+                </div>
+                <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+                  <div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${shuProgress}%` }} />
+                </div>
+                <p className="text-[10px] text-slate-400 leading-normal">
+                  {shuProgress >= 100 
+                    ? "🎉 Selamat! Target sisa hasil usaha (SHU) bersih tahunan desa telah terlampaui!"
+                    : `Dibutuhkan tambahan surplus usaha sebesar ${formatRupiah(Math.max(0, annualShuTarget - sisaHasilUsaha))} lagi untuk merealisasikan target SHU.`}
+                </p>
+              </div>
+
+              {/* Target 2: PADesa Target */}
+              <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl space-y-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Target Kontribusi Bagi Hasil PADesa (40% SHU)</span>
+                    <span className="text-sm font-bold text-slate-800 font-mono block mt-1">{formatRupiah(padesContribution)} / {formatRupiah(annualPadesTarget)}</span>
+                  </div>
+                  <span className="text-xs font-extrabold text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg px-2 py-0.5 font-mono">{padesProgress.toFixed(1)}%</span>
+                </div>
+                <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+                  <div className="h-full bg-indigo-500 transition-all duration-1000" style={{ width: `${padesProgress}%` }} />
+                </div>
+                <p className="text-[10px] text-slate-400 leading-normal">
+                  {padesProgress >= 100
+                    ? "🎉 Luar biasa! Target setoran dividen anggaran desa (PADesa) sukses dicapai."
+                    : `Tren saat ini memproyeksikan target alokasi bagi hasil PADesa terbayar lunas pada akhir tahun anggaran.`}
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── SECTION: PREMIUM VISUAL INSIGHTS ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

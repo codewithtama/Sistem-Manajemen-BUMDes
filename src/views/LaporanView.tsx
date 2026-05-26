@@ -22,6 +22,9 @@ interface LaporanViewProps {
   cashTransactions: CashTransaction[];
   savingAccounts: SavingAccount[];
   loans: Loan[];
+  citizens: { id: string; name: string; nik: string; rtRw: string }[];
+  userRole: "operator" | "admin";
+  onDistributeDividends: () => void;
 }
 
 function Row({ label, value, bold, color }: { label: string; value: string; bold?: boolean; color?: string }) {
@@ -46,6 +49,7 @@ export default function LaporanView({
   totalGajiBeban, totalOpsBeban, totalBumdesExpenses, sisaHasilUsaha,
   alokasiPADesa, alokasiCadangan, alokasiPengurus, alokasiBonusWarga, alokasiSosial,
   triggerPrintLPJ, setActiveTab, cashTransactions, savingAccounts, loans,
+  citizens, userRole, onDistributeDividends,
 }: LaporanViewProps) {
   const values = {
     padesa:  alokasiPADesa,
@@ -313,6 +317,83 @@ export default function LaporanView({
               </div>
 
             </div>
+          </div>
+          
+          {/* Rencana Pembagian Dividen Warga */}
+          <div className="page-break-avoid border border-slate-100 rounded-2xl p-5 bg-slate-50/50">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">Pembagian Dividen Jasa Anggota (10%)</h3>
+                <p className="text-[10px] text-slate-500 mt-0.5">Alokasi bonus surplus BUMDes didistribusikan secara adil (50% merata + 50% tabungan).</p>
+              </div>
+              <div className="no-print">
+                {userRole === "admin" ? (
+                  <button
+                    disabled={sisaHasilUsaha <= 0}
+                    onClick={onDistributeDividends}
+                    className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold rounded-lg text-[10px] transition cursor-pointer uppercase tracking-wider"
+                  >
+                    Cairkan Dividen ke Tabungan Warga
+                  </button>
+                ) : (
+                  <span className="text-[10px] text-slate-400 font-semibold italic flex items-center gap-1 border border-slate-200 px-2.5 py-1 bg-white rounded-lg">
+                    Lembaga Terkunci (Operator)
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {sisaHasilUsaha > 0 && citizens.length > 0 ? (
+              <div className="overflow-x-auto border border-slate-100 rounded-xl bg-white max-h-56">
+                <table className="w-full text-left border-collapse text-[11px] font-mono">
+                  <thead>
+                    <tr className="bg-slate-50 text-slate-500 uppercase text-[8px] border-b border-slate-100 sticky top-0">
+                      <th className="px-4 py-2">Nama Warga</th>
+                      <th className="px-4 py-2">NIK / RT-RW</th>
+                      <th className="px-4 py-2 text-right">Tabungan Aktif</th>
+                      <th className="px-4 py-2 text-right">Dividen Merata (50%)</th>
+                      <th className="px-4 py-2 text-right">Dividen Simpanan (50%)</th>
+                      <th className="px-4 py-2 text-right font-bold text-slate-700">Total Dividen</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {(() => {
+                      const totalBonusPool = alokasiBonusWarga;
+                      const basePool = Math.round(totalBonusPool * 0.5);
+                      const proportionalPool = Math.round(totalBonusPool * 0.5);
+                      const baseSharePerCitizen = Math.round(basePool / citizens.length);
+                      const totalSavings = savingAccounts.reduce((sum, a) => sum + a.balance, 0);
+
+                      return citizens.map(c => {
+                        const citAccs = savingAccounts.filter(a => a.citizenId === c.id);
+                        const citizenSavingSum = citAccs.reduce((sum, a) => sum + a.balance, 0);
+                        
+                        const baseAmount = baseSharePerCitizen;
+                        const proportionalAmount = totalSavings > 0 
+                          ? Math.round((citizenSavingSum / totalSavings) * proportionalPool)
+                          : 0;
+                        const totalDividend = baseAmount + proportionalAmount;
+
+                        return (
+                          <tr key={c.id} className="hover:bg-slate-50/50">
+                            <td className="px-4 py-2 font-bold text-slate-700">{c.name}</td>
+                            <td className="px-4 py-2 text-slate-400">{c.nik.slice(0, 6)}... / {c.rtRw}</td>
+                            <td className="px-4 py-2 text-right">{formatRupiah(citizenSavingSum)}</td>
+                            <td className="px-4 py-2 text-right text-slate-500">{formatRupiah(baseAmount)}</td>
+                            <td className="px-4 py-2 text-right text-slate-500">{formatRupiah(proportionalAmount)}</td>
+                            <td className="px-4 py-2 text-right font-extrabold text-rose-600">{formatRupiah(totalDividend)}</td>
+                          </tr>
+                        );
+                      });
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-6 text-slate-400 text-[10px] bg-white border border-slate-100 rounded-xl leading-relaxed">
+                Pembagian dividen tidak aktif karena SHU berjalan bernilai Rp 0 atau belum ada data warga desa terdaftar.
+              </div>
+            )}
           </div>
 
           {/* Tanda Tangan */}
