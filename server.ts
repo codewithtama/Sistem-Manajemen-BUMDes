@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs/promises";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
@@ -11,9 +12,11 @@ const PORT = 3000;
 
 app.use(express.json({ limit: "15mb" }));
 
+const DB_PATH = path.join(process.cwd(), "bumdes_db.json");
+
 // Helper function to lazily initialize GoogleGenAI with safe checks
-function getGeminiClient() {
-  const apiKey = process.env.GEMINI_API_KEY;
+function getGeminiClient(reqHeaders?: any) {
+  const apiKey = reqHeaders?.["x-gemini-api-key"] || process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY is not defined. Please add your Gemini API key in Settings > Secrets.");
   }
@@ -27,6 +30,28 @@ function getGeminiClient() {
   });
 }
 
+// ── LOCAL SERVER JSON DATABASE ENDPOINTS ──────────────────────────────────────
+app.get("/api/db", async (req, res) => {
+  try {
+    await fs.access(DB_PATH);
+    const data = await fs.readFile(DB_PATH, "utf-8");
+    res.json(JSON.parse(data));
+  } catch (err) {
+    res.status(404).json({ message: "No database file found on server yet." });
+  }
+});
+
+app.post("/api/db", async (req, res) => {
+  try {
+    const stateData = req.body;
+    await fs.writeFile(DB_PATH, JSON.stringify(stateData, null, 2), "utf-8");
+    res.json({ success: true, message: "State saved to server database." });
+  } catch (err: any) {
+    console.error("Failed to save database:", err);
+    res.status(500).json({ error: err.message || "Failed to save state to server." });
+  }
+});
+
 // API endpoint for general regulatory Q&A with context
 app.post("/api/gemini/chat", async (req, res) => {
   try {
@@ -34,7 +59,7 @@ app.post("/api/gemini/chat", async (req, res) => {
     
     let ai;
     try {
-      ai = getGeminiClient();
+      ai = getGeminiClient(req.headers);
     } catch (err: any) {
       return res.status(400).json({ error: err.message });
     }
@@ -89,7 +114,7 @@ app.post("/api/gemini/analyze", async (req, res) => {
 
     let ai;
     try {
-      ai = getGeminiClient();
+      ai = getGeminiClient(req.headers);
     } catch (err: any) {
       return res.status(400).json({ error: err.message });
     }

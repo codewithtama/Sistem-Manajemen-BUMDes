@@ -180,7 +180,22 @@ export default function Modals({
                 <Field label="Bendahara BUMDes">
                   <input className={inputCls} value={formConfig.treasurerName} onChange={e => setFormConfig({ ...formConfig, treasurerName: e.target.value })} />
                 </Field>
+                <Field label="Denda Keterlambatan (%/hari)">
+                  <input type="number" step="0.01" className={inputCls + " font-mono"} value={formConfig.finePercentagePerDay} onChange={e => setFormConfig({ ...formConfig, finePercentagePerDay: Number(e.target.value) })} />
+                </Field>
               </div>
+              <Field label="Kunci API Gemini (Opsional — untuk asisten kecerdasan buatan)">
+                <input
+                  type="password"
+                  placeholder="AIzaSy..."
+                  className={inputCls + " font-mono"}
+                  value={formConfig.geminiApiKey || ""}
+                  onChange={e => setFormConfig({ ...formConfig, geminiApiKey: e.target.value })}
+                />
+                <p className="text-[10px] text-slate-400 mt-1 leading-normal">
+                  Masukkan kunci API Gemini Anda jika server dideploy tanpa key. Tersimpan aman di peramban web lokal Anda.
+                </p>
+              </Field>
               <SubmitButton>Simpan Konfigurasi</SubmitButton>
               {handleClearMockData && (
                 <div className="pt-3 border-t border-slate-100 mt-3">

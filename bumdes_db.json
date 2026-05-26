@@ -1,0 +1,28 @@
+{
+  "config": {
+    "villageName": "Desa Sukamaju",
+    "villageHead": "Bapak H. Mulyono",
+    "bumdesName": "BUMDes Karya Bersama",
+    "directorName": "Bapak Hermawan, S.E.",
+    "treasurerName": "Ibu Lilis Suryani",
+    "initialCapitalDate": "2026-01-02",
+    "initialCapitalAmount": 150000000,
+    "customInterestRate": 1,
+    "finePercentagePerDay": 0.1
+  },
+  "citizens": [],
+  "savingAccounts": [],
+  "savingTransactions": [],
+  "loans": [],
+  "loanRepayments": [],
+  "cashTransactions": [
+    {
+      "id": "tx-1",
+      "date": "2026-01-02",
+      "type": "masuk",
+      "category": "Modal Awal BUMDes",
+      "amount": 150000000,
+      "description": "Penerimaan modal awal dari Anggaran Pendapatan Belanja Desa (APBDes)"
+    }
+  ]
+}

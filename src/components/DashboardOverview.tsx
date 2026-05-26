@@ -48,13 +48,7 @@ export default function DashboardOverview({
         }
       });
 
-    // Fallbacks if no data exists, for premium aesthetic purposes
-    if (pamsimas === 0 && tokoDesa === 0 && alatTani === 0 && sampah === 0) {
-      pamsimas = 12500000;
-      tokoDesa = 18700000;
-      alatTani = 6400000;
-      sampah = 3100000;
-    }
+
 
     const total = pamsimas + tokoDesa + alatTani + sampah + lainnya;
     return { pamsimas, tokoDesa, alatTani, sampah, lainnya, total };

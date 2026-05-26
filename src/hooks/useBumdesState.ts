@@ -23,6 +23,7 @@ import {
 
 export function useBumdesState() {
   const [activeTab, setActiveTab] = useState<string>("dashboard");
+  const [isLoadingServerDb, setIsLoadingServerDb] = useState(true);
 
   // ── Persistent state ────────────────────────────────────────────────────────
   const [config, setConfig] = useState<BUMDesConfig>(() => {
@@ -220,6 +221,66 @@ export function useBumdesState() {
   useEffect(() => { localStorage.setItem("bumdes_loans", JSON.stringify(loans)); }, [loans]);
   useEffect(() => { localStorage.setItem("bumdes_repayments", JSON.stringify(loanRepayments)); }, [loanRepayments]);
   useEffect(() => { localStorage.setItem("bumdes_cash_txs", JSON.stringify(cashTransactions)); }, [cashTransactions]);
+
+  // ── Server Database Sync ───────────────────────────────────────────────────
+  // 1. Load from server on startup
+  useEffect(() => {
+    const loadServerDb = async () => {
+      try {
+        const response = await fetch("/api/db");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.config) {
+            setConfig(data.config);
+            setFormConfig(data.config);
+          }
+          if (data.citizens) setCitizens(data.citizens);
+          if (data.savingAccounts) setSavingAccounts(data.savingAccounts);
+          if (data.savingTransactions) setSavingTransactions(data.savingTransactions);
+          if (data.loans) setLoans(data.loans);
+          if (data.loanRepayments) setLoanRepayments(data.loanRepayments);
+          if (data.cashTransactions) setCashTransactions(data.cashTransactions);
+          showToast("Data berhasil disinkronisasi dari server database!", "success");
+        } else {
+          console.log("No database found on server, fallback to local storage");
+        }
+      } catch (err) {
+        console.warn("Could not load database from server, using local storage instead.", err);
+      } finally {
+        setIsLoadingServerDb(false);
+      }
+    };
+    loadServerDb();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 2. Debounced background save to server when states change
+  useEffect(() => {
+    if (isLoadingServerDb) return;
+
+    const saveState = async () => {
+      try {
+        await fetch("/api/db", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            config,
+            citizens,
+            savingAccounts,
+            savingTransactions,
+            loans,
+            loanRepayments,
+            cashTransactions
+          })
+        });
+      } catch (err) {
+        console.error("Failed to sync state with server database:", err);
+      }
+    };
+
+    const timer = setTimeout(saveState, 800);
+    return () => clearTimeout(timer);
+  }, [config, citizens, savingAccounts, savingTransactions, loans, loanRepayments, cashTransactions, isLoadingServerDb]);
 
   // Auto-update loan status whenever loans change
   useEffect(() => {
@@ -754,7 +815,10 @@ export function useBumdesState() {
     try {
       const response = await fetch("/api/gemini/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "x-gemini-api-key": config.geminiApiKey || ""
+        },
         body: JSON.stringify({
           message: userMsg,
           history: nextHistory.slice(0, -1),
@@ -791,7 +855,10 @@ export function useBumdesState() {
     try {
       const response = await fetch("/api/gemini/analyze", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "x-gemini-api-key": config.geminiApiKey || ""
+        },
         body: JSON.stringify({
           cashTransactions: cashTransactions.slice(-30),
           savingsData: savingAccounts,

@@ -73,4 +73,5 @@ export interface BUMDesConfig {
   initialCapitalAmount: number;
   customInterestRate: number; // Default interest rate for official credits
   finePercentagePerDay: number; // Late payment fine: % of outstanding principal per day overdue
+  geminiApiKey?: string; // Custom API key for Gemini AI assistant
 }
