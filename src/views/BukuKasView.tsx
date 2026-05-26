@@ -17,6 +17,7 @@ interface BukuKasViewProps {
   currentGeneralCash: number;
   onEditCash: (tx: CashTransaction) => void;
   onDeleteCash: (id: string) => void;
+  userRole: "operator" | "admin";
 }
 
 export default function BukuKasView({
@@ -33,6 +34,7 @@ export default function BukuKasView({
   currentGeneralCash,
   onEditCash,
   onDeleteCash,
+  userRole,
 }: BukuKasViewProps) {
   const totalMasuk  = cashTransactions.filter(t => t.type === "masuk").reduce((s, t) => s + t.amount, 0);
   const totalKeluar = cashTransactions.filter(t => t.type === "keluar").reduce((s, t) => s + t.amount, 0);
@@ -217,10 +219,10 @@ export default function BukuKasView({
                       {tx.type === "keluar" ? formatRupiah(tx.amount) : "—"}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      {isSystemGenerated ? (
+                      {isSystemGenerated && userRole !== "admin" ? (
                         <span
                           className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold text-slate-400 bg-slate-50 rounded-lg border border-slate-200"
-                          title="Transaksi otomatis terkunci (hanya-baca)"
+                          title="Transaksi otomatis terkunci (Hanya Superuser yang dapat mengubah)"
                         >
                           <Lock className="w-3 h-3 text-slate-400" />
                           Sistem

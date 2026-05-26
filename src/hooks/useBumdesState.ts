@@ -25,6 +25,11 @@ export function useBumdesState() {
   const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [isLoadingServerDb, setIsLoadingServerDb] = useState(true);
 
+  // ── Authentication Role State ──────────────────────────────────────────────
+  const [userRole, setUserRole] = useState<"operator" | "admin">("operator");
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [adminPasswordInput, setAdminPasswordInput] = useState("");
+
   // ── Persistent state ────────────────────────────────────────────────────────
   const [config, setConfig] = useState<BUMDesConfig>(() => {
     try {
@@ -35,9 +40,12 @@ export function useBumdesState() {
         if (parsed.finePercentagePerDay === undefined) {
           parsed.finePercentagePerDay = initialBUMDesConfig.finePercentagePerDay;
         }
+        if (parsed.adminPassword === undefined) {
+          parsed.adminPassword = "admin123";
+        }
         return parsed;
       }
-      return initialBUMDesConfig;
+      return { ...initialBUMDesConfig, adminPassword: "admin123" };
     } catch (e) {
       console.error("Failed to parse bumdes_config:", e);
       return initialBUMDesConfig;
@@ -324,6 +332,25 @@ export function useBumdesState() {
     setConfig(formConfig);
     setShowConfigModal(false);
     showToast("Konfigurasi administrasi BUMDes berhasil diperbarui!", "success");
+  };
+
+  // ── Authentication ──────────────────────────────────────────────────────────
+  const handleAdminLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    const requiredPassword = config.adminPassword || "admin123";
+    if (adminPasswordInput === requiredPassword) {
+      setUserRole("admin");
+      setShowLoginModal(false);
+      setAdminPasswordInput("");
+      showToast("Akses Superuser/Admin berhasil dibuka!", "success");
+    } else {
+      showToast("Kata sandi Superuser tidak cocok.", "error");
+    }
+  };
+
+  const handleAdminLogout = () => {
+    setUserRole("operator");
+    showToast("Keluar dari akses Superuser. Mode Operator aktif.", "info");
   };
 
   // ── Cash Transactions ────────────────────────────────────────────────────────
@@ -1022,6 +1049,10 @@ export function useBumdesState() {
     alokasiBonusWarga, alokasiSosial,
     showReceiptModal, setShowReceiptModal,
     lastCompletedTx, setLastCompletedTx,
-    toast, showToast, handleClearMockData
+    toast, showToast, handleClearMockData,
+    userRole, setUserRole,
+    showLoginModal, setShowLoginModal,
+    adminPasswordInput, setAdminPasswordInput,
+    handleAdminLogin, handleAdminLogout
   };
 }

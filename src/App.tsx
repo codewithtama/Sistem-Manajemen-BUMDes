@@ -41,6 +41,14 @@ export default function App() {
             state.setActiveTab(tab);
             setSidebarOpen(false);
           }}
+          userRole={state.userRole}
+          onAdminAction={() => {
+            if (state.userRole === "admin") {
+              state.handleAdminLogout();
+            } else {
+              state.setShowLoginModal(true);
+            }
+          }}
         />
       </aside>
 
@@ -89,6 +97,7 @@ export default function App() {
                   currentGeneralCash={state.currentGeneralCash}
                   onEditCash={state.handleOpenEditCash}
                   onDeleteCash={state.handleDeleteCashTransaction}
+                  userRole={state.userRole}
                 />
               </div>
             )}
@@ -244,6 +253,11 @@ export default function App() {
         showReceiptModal={state.showReceiptModal}
         setShowReceiptModal={state.setShowReceiptModal}
         lastCompletedTx={state.lastCompletedTx}
+        showLoginModal={state.showLoginModal}
+        setShowLoginModal={state.setShowLoginModal}
+        adminPasswordInput={state.adminPasswordInput}
+        setAdminPasswordInput={state.setAdminPasswordInput}
+        handleAdminLogin={state.handleAdminLogin}
       />
 
       {/* Toast Notification overlay */}

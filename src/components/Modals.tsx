@@ -138,6 +138,13 @@ interface ModalsProps {
   showReceiptModal: boolean;
   setShowReceiptModal: (s: boolean) => void;
   lastCompletedTx: any | null;
+
+  // ── Auth Props ──
+  showLoginModal: boolean;
+  setShowLoginModal: (s: boolean) => void;
+  adminPasswordInput: string;
+  setAdminPasswordInput: (p: string) => void;
+  handleAdminLogin: (e: React.FormEvent) => void;
 }
 
 export default function Modals({
@@ -153,6 +160,7 @@ export default function Modals({
   showAmortizationModal, setShowAmortizationModal, amortizationLoan,
   showReceiptModal, setShowReceiptModal, lastCompletedTx,
   handleClearMockData,
+  showLoginModal, setShowLoginModal, adminPasswordInput, setAdminPasswordInput, handleAdminLogin,
 }: ModalsProps) {
   return (
     <>
@@ -182,6 +190,9 @@ export default function Modals({
                 </Field>
                 <Field label="Denda Keterlambatan (%/hari)">
                   <input type="number" step="0.01" className={inputCls + " font-mono"} value={formConfig.finePercentagePerDay} onChange={e => setFormConfig({ ...formConfig, finePercentagePerDay: Number(e.target.value) })} />
+                </Field>
+                <Field label="Kata Sandi Superuser">
+                  <input type="text" className={inputCls + " font-mono"} value={formConfig.adminPassword || "admin123"} onChange={e => setFormConfig({ ...formConfig, adminPassword: e.target.value })} />
                 </Field>
               </div>
               <Field label="Kunci API Gemini (Opsional — untuk asisten kecerdasan buatan)">
@@ -685,6 +696,35 @@ export default function Modals({
             </div>
             
           </div>
+        </ModalWrapper>
+      )}
+
+      {/* 12. Login Admin/Superuser */}
+      {showLoginModal && (
+        <ModalWrapper onClose={() => setShowLoginModal(false)}>
+          <ModalPanel title="Autentikasi Superuser BUMDes" onClose={() => setShowLoginModal(false)}>
+            <form onSubmit={handleAdminLogin} className="p-6 space-y-4 font-sans">
+              <div className="text-center pb-2">
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Masukkan kata sandi administratif untuk mengaktifkan privilese penuh (Full Privilege) edit/delete data sistem.
+                </p>
+              </div>
+              <Field label="Kata Sandi Superuser">
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  className={inputCls + " font-mono"}
+                  value={adminPasswordInput}
+                  onChange={e => setAdminPasswordInput(e.target.value)}
+                  autoFocus
+                />
+              </Field>
+              <div className="text-[10px] text-slate-400">
+                Sandi bawaan sistem: <span className="font-mono font-bold">admin123</span> (dapat diubah di menu parameter).
+              </div>
+              <SubmitButton>Buka Akses Superuser</SubmitButton>
+            </form>
+          </ModalPanel>
         </ModalWrapper>
       )}
     </>

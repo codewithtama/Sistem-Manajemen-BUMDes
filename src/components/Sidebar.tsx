@@ -9,11 +9,14 @@ import {
   Sparkles,
   ChevronRight,
   TrendingUp,
+  Lock,
 } from "lucide-react";
 
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  userRole: "operator" | "admin";
+  onAdminAction: () => void;
 }
 
 const navItems = [
@@ -26,7 +29,7 @@ const navItems = [
   { id: "advisor",   label: "Asisten AI",      icon: Sparkles,        group: "Lainnya",  special: true },
 ];
 
-export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
+export default function Sidebar({ activeTab, setActiveTab, userRole, onAdminAction }: SidebarProps) {
   const groups = ["Utama", "Keuangan", "Administrasi", "Lainnya"];
 
   return (
@@ -86,8 +89,28 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="px-4 py-4 border-t border-slate-800 shrink-0">
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-slate-800/60">
+      <div className="px-4 py-4 border-t border-slate-800 shrink-0 space-y-3">
+        <button
+          onClick={onAdminAction}
+          className={`w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+            userRole === "admin"
+              ? "bg-rose-600/10 text-rose-400 border border-rose-500/20 hover:bg-rose-600/20"
+              : "bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700/50"
+          }`}
+        >
+          {userRole === "admin" ? (
+            <>
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+              Keluar Superuser
+            </>
+          ) : (
+            <>
+              <Lock className="w-3.5 h-3.5 text-emerald-500" />
+              Login Superuser
+            </>
+          )}
+        </button>
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-slate-800/60 font-sans">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0 animate-pulse" />
           <div>
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Permendesa No.3/2021</p>
