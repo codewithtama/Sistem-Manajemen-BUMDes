@@ -6,7 +6,8 @@ import {
   SavingTransaction,
   Loan,
   LoanRepayment,
-  BUMDesConfig
+  BUMDesConfig,
+  AuditEvent
 } from "../types";
 import {
   initialBUMDesConfig,
@@ -69,6 +70,16 @@ export function useBumdesState() {
       return remaining > 0 ? remaining : 0;
     }
     return 0;
+  });
+
+  const [auditLogs, setAuditLogs] = useState<AuditEvent[]>(() => {
+    try {
+      const saved = localStorage.getItem("bumdes_audit_logs");
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error("Failed to parse bumdes_audit_logs:", e);
+      return [];
+    }
   });
 
   // ── Persistent state ────────────────────────────────────────────────────────
@@ -160,6 +171,41 @@ export function useBumdesState() {
   });
 
   // ── Advanced Security Hooks & Effects ───────────────────────────────────────
+  const recordAuditEvent = (
+    action: AuditEvent["action"],
+    actor: "Operator" | "Superuser",
+    details: string
+  ) => {
+    const dateToday = new Date().toISOString();
+    setAuditLogs(prev => {
+      const sorted = [...prev].sort((a, b) => a.timestamp.localeCompare(b.timestamp) || a.id.localeCompare(b.id));
+      const lastEvent = sorted[sorted.length - 1];
+      const prevHash = lastEvent ? lastEvent.hash : "";
+      
+      const id = "evt-" + Date.now() + Math.random().toString().slice(-4);
+      const content = `${id}|${dateToday}|${actor}|${action}|${details}|${prevHash}`;
+      const hash = sha256(content);
+      
+      const newEvent: AuditEvent = {
+        id,
+        timestamp: dateToday,
+        actor,
+        action,
+        details,
+        prevHash,
+        hash
+      };
+      const updated = [...sorted, newEvent];
+      localStorage.setItem("bumdes_audit_logs", JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const logEvent = (action: AuditEvent["action"], details: string) => {
+    const actor = userRole === "admin" ? ("Superuser" as const) : ("Operator" as const);
+    recordAuditEvent(action, actor, details);
+  };
+
   // 1. Auto-Session Timeout (Auto-Lock 3 Minutes)
   const lastActivityTime = useRef<number>(Date.now());
   const warnToastShown = useRef<boolean>(false);
@@ -343,6 +389,7 @@ export function useBumdesState() {
   useEffect(() => { localStorage.setItem("bumdes_loans", JSON.stringify(loans)); }, [loans]);
   useEffect(() => { localStorage.setItem("bumdes_repayments", JSON.stringify(loanRepayments)); }, [loanRepayments]);
   useEffect(() => { localStorage.setItem("bumdes_cash_txs", JSON.stringify(cashTransactions)); }, [cashTransactions]);
+  useEffect(() => { localStorage.setItem("bumdes_audit_logs", JSON.stringify(auditLogs)); }, [auditLogs]);
 
   // ── Server Database Sync ───────────────────────────────────────────────────
   // 1. Load from server on startup
@@ -392,6 +439,28 @@ export function useBumdesState() {
             }
             setCashTransactions(loadedTxs);
             setIsLedgerCorrupted(verifyLedgerIntegrity(loadedTxs));
+          }
+          if (data.auditLogs) {
+            setAuditLogs(data.auditLogs);
+          } else {
+            const savedLogs = localStorage.getItem("bumdes_audit_logs");
+            if (!savedLogs || JSON.parse(savedLogs).length === 0) {
+              const genId = "evt-genesis";
+              const genTime = new Date().toISOString();
+              const genContent = `${genId}|${genTime}|Superuser|SYSTEM_INIT|Sistem Notaris BUMDes Karya Bersama resmi diaktifkan secara mandiri.|`;
+              const genHash = sha256(genContent);
+              const genesisEvent: AuditEvent = {
+                id: genId,
+                timestamp: genTime,
+                actor: "Superuser",
+                action: "SYSTEM_INIT",
+                details: "Sistem Notaris BUMDes Karya Bersama resmi diaktifkan secara mandiri.",
+                prevHash: "",
+                hash: genHash
+              };
+              setAuditLogs([genesisEvent]);
+              localStorage.setItem("bumdes_audit_logs", JSON.stringify([genesisEvent]));
+            }
           }
           showToast("Data berhasil disinkronisasi dari server database!", "success");
         } else {
@@ -443,7 +512,8 @@ export function useBumdesState() {
             savingTransactions,
             loans,
             loanRepayments,
-            cashTransactions
+            cashTransactions,
+            auditLogs
           })
         });
       } catch (err) {
@@ -474,6 +544,7 @@ export function useBumdesState() {
     }
     setConfig(formConfig);
     setShowConfigModal(false);
+    logEvent("CONFIG_UPDATED", `Konfigurasi parameter BUMDes berhasil diperbarui: Nama BUMDes (${formConfig.bumdesName}), Target SHU (${formatRupiah(formConfig.targetShu || 0)})`);
     showToast("Konfigurasi administrasi BUMDes berhasil diperbarui!", "success");
   };
 
@@ -490,6 +561,7 @@ export function useBumdesState() {
       setShowLoginModal(false);
       setAdminPasswordInput("");
       setFailedAttempts(0);
+      recordAuditEvent("LOGIN_SUCCESS", "Superuser", "Akses administratif Superuser berhasil dibuka lewat password.");
       showToast("Akses Superuser/Admin berhasil dibuka!", "success");
     } else {
       const nextAttempts = failedAttempts + 1;
@@ -500,6 +572,7 @@ export function useBumdesState() {
         sessionStorage.setItem("admin_login_cooldown_until", String(cooldownUntil));
         setCooldownSeconds(cooldownTime);
         setAdminPasswordInput("");
+        recordAuditEvent("BRUTE_FORCE_LOCK", "Operator", "Tombol login superuser dikunci selama 5 menit akibat 5 kegagalan sandi berturut-turut.");
         showToast("Terlalu banyak percobaan salah! Akses terkunci selama 5 menit.", "error");
       } else {
         showToast(`Kata sandi salah. Percobaan gagal: ${nextAttempts}/5`, "error");
@@ -509,6 +582,7 @@ export function useBumdesState() {
 
   const handleAdminLogout = () => {
     setUserRole("operator");
+    recordAuditEvent("LOGOUT", "Superuser", "Sesi Superuser ditutup secara manual.");
     showToast("Keluar dari akses Superuser. Mode Operator aktif.", "info");
   };
 
@@ -536,6 +610,7 @@ export function useBumdesState() {
     };
     setCashTransactions(recalculateLedgerHashes([...cashTransactions, newTx]));
     setShowAddCashModal(false);
+    logEvent("TX_CREATED", `Mencatat transaksi kas baru BKU: ${newTx.description} senilai ${formatRupiah(newTx.amount)}`);
     setFormCash({
       date: new Date().toISOString().split("T")[0],
       type: "masuk",
@@ -569,6 +644,7 @@ export function useBumdesState() {
     }
     setCashTransactions(prev => recalculateLedgerHashes(prev.map(t => t.id === editingCash.id ? editingCash : t)));
     setShowEditCashModal(false);
+    logEvent("TX_UPDATED", `Mengoreksi transaksi kas ID: ${editingCash.id} menjadi deskripsi (${editingCash.description}) senilai ${formatRupiah(editingCash.amount)}`);
     setEditingCash(null);
     showToast("Transaksi kas berhasil dikoreksi!", "success");
   };
@@ -580,6 +656,7 @@ export function useBumdesState() {
     }
     if (!window.confirm("Hapus transaksi kas ini? Tindakan tidak dapat dibatalkan.")) return;
     setCashTransactions(prev => recalculateLedgerHashes(prev.filter(t => t.id !== id)));
+    logEvent("TX_DELETED", `Menghapus catatan transaksi kas ID: ${id} dari pembukuan BKU.`);
   };
 
   // ── Citizens ─────────────────────────────────────────────────────────────────
@@ -604,6 +681,7 @@ export function useBumdesState() {
     };
     setCitizens([...citizens, newCitizen]);
     setShowAddCitizenModal(false);
+    logEvent("CITIZEN_MUTATED", `Meregistrasi profil warga baru: ${newCitizen.name} NIK ${newCitizen.nik}`);
     setFormCitizen({ name: "", nik: "", phone: "", rtRw: "", address: "" });
     showToast(`Data warga ${newCitizen.name} berhasil ditambahkan!`, "success");
   };
@@ -639,6 +717,7 @@ export function useBumdesState() {
       ));
     }
     setShowEditCitizenModal(false);
+    logEvent("CITIZEN_MUTATED", `Memperbarui profil data warga: ${editingCitizen.name} NIK ${editingCitizen.nik}`);
     setEditingCitizen(null);
     showToast("Profil data warga berhasil diperbarui!", "success");
   };
@@ -663,6 +742,7 @@ export function useBumdesState() {
     setCitizens(prev => prev.filter(c => c.id !== id));
     setSavingAccounts(prev => prev.filter(a => a.citizenId !== id));
     setSavingTransactions(prev => prev.filter(t => !relatedAccountIds.has(t.savingAccountId)));
+    logEvent("CITIZEN_MUTATED", `Menghapus data profil warga ID: ${id} beserta buku rekening simpanan terkait.`);
     showToast("Data warga berhasil dihapus beserta seluruh buku rekening dan riwayat simpanannya.", "success");
   };
 
@@ -732,6 +812,7 @@ export function useBumdesState() {
     setSavingTransactions([...savingTransactions, newSavingTx]);
     setCashTransactions(recalculateLedgerHashes([...cashTransactions, newGeneralTx]));
     setShowSavingActionModal(false);
+    logEvent("TX_CREATED", `Mutasi tabungan nasabah (${citizen.name}): ${newSavingTx.description} senilai ${formatRupiah(amount)}`);
     setFormSavingAction({ citizenId: "", savingType: "Sukarela", type: "setor", amount: 0, description: "" });
     setLastCompletedTx({
       title: type === "setor" ? "KUITANSI SETORAN TABUNGAN" : "KUITANSI PENARIKAN TABUNGAN",
@@ -972,6 +1053,7 @@ export function useBumdesState() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    logEvent("BACKUP_EXPORT", "Cadangan database BUMDes berhasil diekspor terenkripsi secara kriptografis.");
     showToast("Berkas cadangan terenkripsi berhasil diunduh!", "success");
   };
 
@@ -1013,7 +1095,10 @@ export function useBumdesState() {
         
         const restoredTxs = recalculateLedgerHashes(parsedData.cashTransactions || []);
         setCashTransactions(restoredTxs);
-        
+        if (parsedData.auditLogs) {
+          setAuditLogs(parsedData.auditLogs);
+        }
+        logEvent("RESTORE_IMPORT", `Database BUMDes berhasil dipulihkan secara penuh dari berkas cadangan bertanggal ${parsedData.exportedAt?.split("T")[0]}.`);
         showToast("Data BUMDes berhasil dipulihkan dari berkas cadangan!", "success");
       } catch (err) {
         console.error("Restore failed:", err);
@@ -1257,6 +1342,7 @@ export function useBumdesState() {
     setSavingAccounts(updatedAccounts);
     setSavingTransactions([...savingTransactions, ...newSavingTxs]);
     setCashTransactions(recalculateLedgerHashes([...cashTransactions, newGeneralTx]));
+    logEvent("DIVIDEND_DISBURSED", `Pencairan bagi hasil surplus (Dividen SHU 10%) senilai ${formatRupiah(totalBonusPool)} untuk ${citizens.length} warga.`);
     showToast(`Berhasil mencairkan dividen BUMDes sebesar ${formatRupiah(totalBonusPool)} kepada ${citizens.length} warga desa!`, "success");
   };
 
@@ -1333,6 +1419,7 @@ export function useBumdesState() {
     handleGenerateAuditReport,
     triggerPrintLPJ,
     handleDistributeDividends,
+    auditLogs, setAuditLogs, recordAuditEvent, logEvent,
 
     totalBkuMasuk, totalBkuKeluar, currentGeneralCash,
     totalInterestsEarned, totalFinesEarned, totalFeeRevenue,

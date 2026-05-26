@@ -80,3 +80,14 @@ export interface BUMDesConfig {
   targetPades?: number; // Target annual village contribution (PADesa)
 }
 
+export interface AuditEvent {
+  id: string;
+  timestamp: string;
+  actor: "Operator" | "Superuser";
+  action: "SYSTEM_INIT" | "LOGIN_SUCCESS" | "LOGOUT" | "BRUTE_FORCE_LOCK" | "BACKUP_EXPORT" | "RESTORE_IMPORT" | "DIVIDEND_DISBURSED" | "CONFIG_UPDATED" | "TX_CREATED" | "TX_UPDATED" | "TX_DELETED" | "CITIZEN_MUTATED";
+  details: string;
+  prevHash: string;
+  hash: string;
+}
+
+
