@@ -168,7 +168,7 @@ export default function Modals({
   showReceiptModal, setShowReceiptModal, lastCompletedTx,
   handleClearMockData,
   showLoginModal, setShowLoginModal, adminPasswordInput, setAdminPasswordInput, handleAdminLogin, cooldownSeconds,
-  showCreditModal, setShowCreditModal, loanRepayments,
+  showCreditModal, setShowCreditModal, loanRepayments, userRole,
 }: ModalsProps) {
   const [selectedCalcCitiId, setSelectedCalcCitiId] = React.useState("");
   return (
@@ -189,7 +189,7 @@ export default function Modals({
                   <input className={inputCls} value={formConfig.bumdesName} onChange={e => setFormConfig({ ...formConfig, bumdesName: e.target.value })} />
                 </Field>
                 <Field label="Jasa Admin Simpanan (%)">
-                  <input type="number" step="0.1" className={inputCls + " font-mono"} value={formConfig.customInterestRate} onChange={e => setFormConfig({ ...formConfig, customInterestRate: Number(e.target.value) })} />
+                  <input type="number" min="0" step="0.1" className={inputCls + " font-mono"} value={formConfig.customInterestRate} onChange={e => setFormConfig({ ...formConfig, customInterestRate: Math.max(0, Number(e.target.value)) })} />
                 </Field>
                 <Field label="Direktur BUMDes">
                   <input className={inputCls} value={formConfig.directorName} onChange={e => setFormConfig({ ...formConfig, directorName: e.target.value })} />
@@ -198,10 +198,21 @@ export default function Modals({
                   <input className={inputCls} value={formConfig.treasurerName} onChange={e => setFormConfig({ ...formConfig, treasurerName: e.target.value })} />
                 </Field>
                 <Field label="Denda Keterlambatan (%/hari)">
-                  <input type="number" step="0.01" className={inputCls + " font-mono"} value={formConfig.finePercentagePerDay} onChange={e => setFormConfig({ ...formConfig, finePercentagePerDay: Number(e.target.value) })} />
+                  <input type="number" min="0" step="0.01" className={inputCls + " font-mono"} value={formConfig.finePercentagePerDay} onChange={e => setFormConfig({ ...formConfig, finePercentagePerDay: Math.max(0, Number(e.target.value)) })} />
                 </Field>
                 <Field label="Kata Sandi Superuser">
-                  <input type="text" className={inputCls + " font-mono"} value={formConfig.adminPassword || "admin123"} onChange={e => setFormConfig({ ...formConfig, adminPassword: e.target.value })} />
+                  {userRole === "admin" ? (
+                    <input
+                      type="password"
+                      className={inputCls + " font-mono"}
+                      value={formConfig.adminPassword || "admin123"}
+                      onChange={e => setFormConfig({ ...formConfig, adminPassword: e.target.value })}
+                    />
+                  ) : (
+                    <div className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] text-slate-400 font-mono italic">
+                      •••••••• (Disembunyikan — Butuh Akses Superuser)
+                    </div>
+                  )}
                 </Field>
                 <Field label="Target SHU Tahunan (Rp)">
                   <input type="text" className={inputCls + " font-mono"} value={formatIndoNumber(formConfig.targetShu || 0)} onChange={e => setFormConfig({ ...formConfig, targetShu: parseIndoNumber(e.target.value) })} />
@@ -368,10 +379,10 @@ export default function Modals({
                   <input type="text" className={inputCls + " font-mono"} placeholder="10.000.000" value={formatIndoNumber(formLoan.amount)} onChange={e => setFormLoan({ ...formLoan, amount: parseIndoNumber(e.target.value) })} />
                 </Field>
                 <Field label="Jasa Admin (% / bulan)">
-                  <input type="number" step="0.1" className={inputCls + " font-mono"} value={formLoan.interestPercentage} onChange={e => setFormLoan({ ...formLoan, interestPercentage: Number(e.target.value) })} />
+                  <input type="number" min="0" step="0.1" className={inputCls + " font-mono"} value={formLoan.interestPercentage} onChange={e => setFormLoan({ ...formLoan, interestPercentage: Math.max(0, Number(e.target.value)) })} />
                 </Field>
                 <Field label="Tenor (bulan)">
-                  <input type="number" className={inputCls + " font-mono"} value={formLoan.tenorMonths} onChange={e => setFormLoan({ ...formLoan, tenorMonths: Number(e.target.value) })} />
+                  <input type="number" min="1" className={inputCls + " font-mono"} value={formLoan.tenorMonths} onChange={e => setFormLoan({ ...formLoan, tenorMonths: Math.max(1, Math.round(Number(e.target.value))) })} />
                 </Field>
                 <Field label="Periode Tagihan">
                   <select className={selectCls} value={formLoan.repaymentPeriod} onChange={e => setFormLoan({ ...formLoan, repaymentPeriod: e.target.value as Loan["repaymentPeriod"] })}>
@@ -534,10 +545,10 @@ export default function Modals({
                   <input type="text" className={inputCls + " font-mono"} placeholder="10.000.000" value={formatIndoNumber(editingLoan.amount)} onChange={e => setEditingLoan({ ...editingLoan, amount: parseIndoNumber(e.target.value) })} />
                 </Field>
                 <Field label="Jasa Admin (% / bulan)">
-                  <input type="number" step="0.1" className={inputCls + " font-mono"} value={editingLoan.interestPercentage} onChange={e => setEditingLoan({ ...editingLoan, interestPercentage: Number(e.target.value) })} />
+                  <input type="number" min="0" step="0.1" className={inputCls + " font-mono"} value={editingLoan.interestPercentage} onChange={e => setEditingLoan({ ...editingLoan, interestPercentage: Math.max(0, Number(e.target.value)) })} />
                 </Field>
                 <Field label="Tenor (bulan)">
-                  <input type="number" className={inputCls + " font-mono"} value={editingLoan.tenorMonths} onChange={e => setEditingLoan({ ...editingLoan, tenorMonths: Number(e.target.value) })} />
+                  <input type="number" min="1" className={inputCls + " font-mono"} value={editingLoan.tenorMonths} onChange={e => setEditingLoan({ ...editingLoan, tenorMonths: Math.max(1, Math.round(Number(e.target.value))) })} />
                 </Field>
                 <Field label="Periode Tagihan">
                   <select className={selectCls} value={editingLoan.repaymentPeriod} onChange={e => setEditingLoan({ ...editingLoan, repaymentPeriod: e.target.value as Loan["repaymentPeriod"] })}>

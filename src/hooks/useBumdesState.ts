@@ -738,10 +738,18 @@ export function useBumdesState() {
     const relatedAccountIds = new Set(
       savingAccounts.filter(a => a.citizenId === id).map(a => a.id)
     );
+
+    // Find all related loan IDs for this citizen to prevent orphaned database records
+    const relatedLoanIds = new Set(
+      loans.filter(l => l.citizenId === id).map(l => l.id)
+    );
     
     setCitizens(prev => prev.filter(c => c.id !== id));
     setSavingAccounts(prev => prev.filter(a => a.citizenId !== id));
     setSavingTransactions(prev => prev.filter(t => !relatedAccountIds.has(t.savingAccountId)));
+    setLoans(prev => prev.filter(l => l.citizenId !== id));
+    setLoanRepayments(prev => prev.filter(r => !relatedLoanIds.has(r.loanId)));
+    
     logEvent("CITIZEN_MUTATED", `Menghapus data profil warga ID: ${id} beserta buku rekening simpanan terkait.`);
     showToast("Data warga berhasil dihapus beserta seluruh buku rekening dan riwayat simpanannya.", "success");
   };
@@ -844,6 +852,10 @@ export function useBumdesState() {
     }
     if (tenorMonths <= 0) {
       showToast("Tenor jangka waktu pinjaman minimal 1 bulan.", "warning");
+      return;
+    }
+    if (interestPercentage < 0) {
+      showToast("Jasa administratif pinjaman tidak boleh bernilai negatif.", "warning");
       return;
     }
     const citizen = citizens.find(c => c.id === citizenId);
@@ -949,7 +961,11 @@ export function useBumdesState() {
       showToast("Harap pilih rekening debitur aktif.", "warning");
       return;
     }
-    if (principalPaid <= 0 && interestPaid <= 0) {
+    if (Number(principalPaid) < 0 || Number(interestPaid) < 0 || Number(finePaid) < 0) {
+      showToast("Nominal setoran angsuran tidak boleh bernilai negatif.", "warning");
+      return;
+    }
+    if (Number(principalPaid) <= 0 && Number(interestPaid) <= 0) {
       showToast("Harap isi alokasi pembayaran Pokok atau Jasa Administratif secara benar.", "warning");
       return;
     }
@@ -958,21 +974,23 @@ export function useBumdesState() {
       showToast("Data pinjaman aktif tidak ditemukan.", "error");
       return;
     }
-    const totalRepay = Number(principalPaid) + Number(interestPaid) + Number(finePaid);
+
+    const remaining = loan.amount - loan.amountPaidPrincipal;
+    const clampedPrincipal = Math.min(Number(principalPaid), Math.max(0, remaining));
+    const totalRepay = clampedPrincipal + Number(interestPaid) + Number(finePaid);
+
     const newRepayment: LoanRepayment = {
       id: "lr-" + Date.now(),
       loanId,
       citizenName: loan.citizenName,
       date: new Date().toISOString().split("T")[0],
-      principalPaid: Number(principalPaid),
+      principalPaid: clampedPrincipal,
       interestPaid: Number(interestPaid),
       finePaid: Number(finePaid),
       description: description.trim() || `Angsuran Pinjaman oleh ${loan.citizenName}`
     };
     const updatedLoans = loans.map(l => {
       if (l.id === loanId) {
-        const remaining = l.amount - l.amountPaidPrincipal;
-        const clampedPrincipal = Math.min(Number(principalPaid), Math.max(0, remaining));
         const nextPrincipal = l.amountPaidPrincipal + clampedPrincipal;
         const nextInterest = l.amountPaidInterest + Number(interestPaid);
         return {
@@ -990,7 +1008,7 @@ export function useBumdesState() {
       type: "masuk",
       category: "Repayment Pinjaman",
       amount: totalRepay,
-      description: `Setoran Angsuran Simpan Pinjam - ${loan.citizenName} (Pokok: ${formatRupiah(Number(principalPaid))} + Jasa: ${formatRupiah(Number(interestPaid))})`,
+      description: `Setoran Angsuran Simpan Pinjam - ${loan.citizenName} (Pokok: ${formatRupiah(clampedPrincipal)} + Jasa: ${formatRupiah(Number(interestPaid))})`,
       referenceId: newRepayment.id
     };
     const targetLoan = updatedLoans.find(l => l.id === loanId);
@@ -1009,7 +1027,7 @@ export function useBumdesState() {
       amount: totalRepay,
       details: [
         { label: "Nomor Rekening", value: loanId },
-        { label: "Angsuran Pokok", value: formatRupiah(Number(principalPaid)) },
+        { label: "Angsuran Pokok", value: formatRupiah(clampedPrincipal) },
         { label: "Jasa Administratif", value: formatRupiah(Number(interestPaid)) },
         { label: "Denda Overdue", value: formatRupiah(Number(finePaid)) },
         { label: "Keterangan", value: newRepayment.description },
@@ -1330,18 +1348,11 @@ export function useBumdesState() {
       });
     });
 
-    const newGeneralTx: CashTransaction = {
-      id: "tx-div-" + Date.now(),
-      date: dateToday,
-      type: "keluar",
-      category: "Lain-lain",
-      amount: totalBonusPool,
-      description: `Penyaluran Bonus Dividen SHU BUMDes kepada ${citizens.length} warga desa (10% surplus)`
-    };
-
     setSavingAccounts(updatedAccounts);
     setSavingTransactions([...savingTransactions, ...newSavingTxs]);
-    setCashTransactions(recalculateLedgerHashes([...cashTransactions, newGeneralTx]));
+    // Note: Cash does not physically leave the BUMDes vault when distributed directly into savings accounts.
+    // It remains in BUMDes bank/vault as savings liabilities and is only recorded as a cash outflow ("keluar")
+    // in BKU when citizens physically perform a savings withdrawal ("tarik").
     logEvent("DIVIDEND_DISBURSED", `Pencairan bagi hasil surplus (Dividen SHU 10%) senilai ${formatRupiah(totalBonusPool)} untuk ${citizens.length} warga.`);
     showToast(`Berhasil mencairkan dividen BUMDes sebesar ${formatRupiah(totalBonusPool)} kepada ${citizens.length} warga desa!`, "success");
   };

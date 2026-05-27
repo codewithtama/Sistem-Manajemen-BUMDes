@@ -272,6 +272,7 @@ export default function App() {
         showCreditModal={showCreditModal}
         setShowCreditModal={setShowCreditModal}
         loanRepayments={state.loanRepayments}
+        userRole={state.userRole}
       />
 
       {/* Toast Notification overlay */}
