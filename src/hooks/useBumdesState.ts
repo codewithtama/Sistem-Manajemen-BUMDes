@@ -22,7 +22,8 @@ import {
   exportToJSON,
   computeTransactionHash,
   encryptData,
-  decryptData
+  decryptData,
+  sha256
 } from "../data";
 
 // Ledger Hash Chaining Helpers
