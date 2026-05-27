@@ -1,6 +1,6 @@
 import React from "react";
-import { X } from "lucide-react";
-import { Citizen, Loan, BUMDesConfig, CashTransaction, SavingAccount } from "../types";
+import { X, Landmark } from "lucide-react";
+import { Citizen, Loan, BUMDesConfig, CashTransaction, SavingAccount, LoanRepayment } from "../types";
 import { formatRupiah } from "../data";
 
 const formatIndoNumber = (val: number | string): string => {
@@ -151,6 +151,8 @@ interface ModalsProps {
   showCreditModal: boolean;
   setShowCreditModal: (s: boolean) => void;
   loanRepayments: LoanRepayment[];
+  userRole: "operator" | "admin" | string | null;
+  savingAccounts: SavingAccount[];
 }
 
 
@@ -168,7 +170,7 @@ export default function Modals({
   showReceiptModal, setShowReceiptModal, lastCompletedTx,
   handleClearMockData,
   showLoginModal, setShowLoginModal, adminPasswordInput, setAdminPasswordInput, handleAdminLogin, cooldownSeconds,
-  showCreditModal, setShowCreditModal, loanRepayments, userRole,
+  showCreditModal, setShowCreditModal, loanRepayments, userRole, savingAccounts,
 }: ModalsProps) {
   const [selectedCalcCitiId, setSelectedCalcCitiId] = React.useState("");
   return (
